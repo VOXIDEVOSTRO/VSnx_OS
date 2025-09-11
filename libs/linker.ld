@@ -1,0 +1,66 @@
+/*
+MIT License
+
+Copyright (c) 2025 Aditya Bansal
+
+Permission is hereby granted, free of charge, to any person obtaining 
+a copy of this software and associated documentation files (the "Software"), 
+to deal in the Software without restriction, including without limitation the 
+rights to use, copy, modify, merge, publish, distribute, sublicense, 
+and/or sell copies of the Software, and to permit persons to whom 
+the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be 
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+OUTPUT_FORMAT("elf64-x86-64")
+OUTPUT_ARCH(i386:x86-64)
+ENTRY(_start)
+
+SECTIONS
+{
+    /* Start at a high virtual address in our paged memory range */
+    /* Use 256MB (0x10000000) which is in our mapped heap area */
+    . = 0x20030000;
+
+    /* Text section - executable code */
+    .text ALIGN(0x1000) : {
+        *(.text)
+        *(.text.*)
+    }
+
+    /* Read-only data */
+    .rodata ALIGN(0x1000) : {
+        *(.rodata)
+        *(.rodata.*)
+    }
+
+    /* Initialized data */
+    .data ALIGN(0x1000) : {
+        *(.data)
+        *(.data.*)
+    }
+
+    /* Uninitialized data */
+    .bss ALIGN(0x1000) : {
+        *(.bss)
+        *(.bss.*)
+        *(COMMON)
+    }
+
+    /* Discard unnecessary sections */
+    /DISCARD/ : {
+        *(.note.*)
+        *(.comment)
+        *(.eh_frame)
+        *(.eh_frame_hdr)
+    }
+}
