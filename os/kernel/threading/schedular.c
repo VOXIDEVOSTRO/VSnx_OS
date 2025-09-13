@@ -8,41 +8,113 @@
 	round robin
 */
 void scheduler_tick(interrupt_frame_t* frame) {
+    if (!frame) return; // NULL check
 	/*
-		Check if queues and threads exists
-	*/
-    if (!current_thread || !ready_queue) return;
-	/*
-		find the next thread
+		Handle the current thread we point'in
+		to
 	*/
     if (current_thread) {
         current_thread->context = *frame;
-        current_thread->state = THREAD_READY;
         
-        thread_t* last = ready_queue;
-        while (last->next) last = last->next;
-        last->next = current_thread;
-        current_thread->next = NULL;
+        if (current_thread->state == THREAD_RUNNING) {
+            current_thread->state = THREAD_READY;
+            add_to_ready_queue(current_thread);
+        } else if (current_thread->state == THREAD_TERMINATED) {
+            current_thread = NULL;
+        } else if (current_thread->state == THREAD_BLOCKED) {
+            current_thread = NULL;
+        } else {
+            current_thread->state = THREAD_READY;
+            add_to_ready_queue(current_thread);
+        }
     }
     /*
-		Runn it
+		NEXT
 	*/
-    current_thread = ready_queue;
-    ready_queue = ready_queue->next;
-    current_thread->next = NULL;
-    current_thread->state = THREAD_RUNNING;
+    thread_t* next_thread = NULL;
+    if (ready_queue) {
+        next_thread = ready_queue;
+        ready_queue = ready_queue->next;
+        next_thread->next = NULL;
+    }
     /*
-		Handle the privilege level
+		Check for READY threads: They have THREAD_READY
 	*/
+    if (!next_thread) {
+        extern thread_t* thread_table[MAX_THREADS];
+        for (int i = 1; i < MAX_THREADS; i++) {
+            if (thread_table[i] && thread_table[i]->state == THREAD_READY) {
+                next_thread = thread_table[i];
+                break;
+            }
+        }
+    }
+    
+    /*
+		Also for the threads who are currently being scheduled
+	*/
+    if (!next_thread) {
+        extern thread_t* thread_table[MAX_THREADS];
+        for (int i = 1; i < MAX_THREADS; i++) {
+            if (thread_table[i] && 
+                (thread_table[i]->state == THREAD_READY || 
+                 thread_table[i]->state == THREAD_RUNNING)) {
+                next_thread = thread_table[i];
+                break;
+            }
+        }
+    }
+    
+    /*
+		jUST be with the kernel incase nothing to run
+	*/
+    if (!next_thread) {
+        extern thread_t* thread_table[MAX_THREADS];
+        if (thread_table[0] && thread_table[0]->state != THREAD_TERMINATED) {
+            next_thread = thread_table[0];
+        }
+    }
+    
+    if (!next_thread) return;
+    
+	/*
+		Also check if the thread terminated DOESNT slip into the
+		ready queue
+	*/
+    if (next_thread->state == THREAD_TERMINATED) {
+        remove_from_ready_queue(next_thread);
+        return;
+    }
+    
+	/*
+		This would change
+	*/
+    current_thread = next_thread;
+    current_thread->state = THREAD_RUNNING;
+    
+    /*
+		RESTORE the thread context
+		also based of the previalage
+		(Spelled it wrong again)
+    */
+    /*
+	 	RING3
+    */
     if (current_thread->privilege == THREAD_RING3) {
-		/*
-			ring 3
-		*/
-        // Update TSS with thread's kernel stack
         extern tss_t tss;
+        
+        if (!current_thread->kernel_stack) {
+            current_thread->state = THREAD_TERMINATED;
+            return;
+        }
+        
         tss.rsp0 = current_thread->kernel_stack + KERNEL_STACK_SIZE - 8;
         
-        // Set up Ring 3 transition frame
+        if (!current_thread->context.rsp || current_thread->context.rsp < 0x400000000000UL) {
+            current_thread->state = THREAD_TERMINATED;
+            return;
+        }
+        
         frame->rax = current_thread->context.rax;
         frame->rbx = current_thread->context.rbx;
         frame->rcx = current_thread->context.rcx;
@@ -58,9 +130,7 @@ void scheduler_tick(interrupt_frame_t* frame) {
         frame->r13 = current_thread->context.r13;
         frame->r14 = current_thread->context.r14;
         frame->r15 = current_thread->context.r15;
-        /*
-			Setup stack frame 
-		*/
+        
         frame->rip = current_thread->context.rip;
         frame->cs = USER_CODE_SELECTOR;
         frame->rflags = current_thread->context.rflags | 0x200;
@@ -68,8 +138,101 @@ void scheduler_tick(interrupt_frame_t* frame) {
         frame->ss = USER_DATA_SELECTOR;
     } else {
 		/*
-			Ring 0
-		*/
+			RING0
+			i was suprised too how less ring 0 takes
+ 		*/
         *frame = current_thread->context;
     }
 }
+/*
+	Some more helpers
+*/
+
+void add_to_ready_queue(thread_t* thread) {
+    if (!thread || thread->state == THREAD_TERMINATED) return;
+    
+    /*
+		dobbleganger check
+	*/
+    thread_t* check = ready_queue;
+    while (check) {
+        if (check == thread) return;
+        check = check->next;
+    }
+    
+    thread->next = NULL;
+    thread->state = THREAD_READY;
+    
+    if (!ready_queue) {
+        ready_queue = thread;
+    } else {
+        thread_t* last = ready_queue;
+        while (last->next) last = last->next;
+        last->next = thread;
+    }
+}
+
+void remove_from_ready_queue(thread_t* target) {
+    if (!target || !ready_queue) return;
+    
+    if (ready_queue == target) {
+        ready_queue = ready_queue->next;
+        target->next = NULL;
+        return;
+    }
+    
+    thread_t* current = ready_queue;
+    while (current && current->next) {
+        if (current->next == target) {
+            current->next = target->next;
+            target->next = NULL;
+            return;
+        }
+        current = current->next;
+    }
+}
+/*
+	NOT used. Because it was helpful to have
+	during the realtime schedulaing to have the behaviour of
+	this shi i built becuase unpredictable asf
+*/
+#ifdef D_SCHEDULAR
+void debug_scheduler_state(void) {
+    printf("=== SCHEDULER DEBUG STATE ===\n");
+    
+    // Current thread info
+    if (current_thread) {
+        printf("Current Thread: TID=%d PID=%d State=%d\n", 
+               current_thread->tid, current_thread->owner_pid, current_thread->state);
+    } else {
+        printf("Current Thread: NULL\n");
+    }
+    
+    // Ready queue info
+    printf("Ready Queue: ");
+    thread_t* q = ready_queue;
+    int count = 0;
+    while (q && count < 10) { // Prevent infinite loop
+        printf("TID=%d ", q->tid);
+        q = q->next;
+        count++;
+    }
+    if (count == 0) printf("EMPTY");
+    if (count >= 10) printf("...(truncated)");
+    printf("\n");
+    
+    // Thread table info
+    extern thread_t* thread_table[MAX_THREADS];
+    extern uint32_t thread_count;
+    printf("Thread Table: %d threads\n", thread_count);
+    
+    for (int i = 0; i < MAX_THREADS && i < 10; i++) {
+        if (thread_table[i]) {
+            printf("  [%d] TID=%d PID=%d State=%d\n", 
+                   i, thread_table[i]->tid, thread_table[i]->owner_pid, thread_table[i]->state);
+        }
+    }
+    
+    printf("=============================\n");
+}
+#endif

@@ -193,6 +193,7 @@ int ide_detect_drives(void) {
     for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 2; j++) {
             uint8_t err = 0, type = IDE_ATA, status;
+			int timeout = 10000;
             ide_devices[count].reserved = 0;
             
             // Select drive
@@ -211,14 +212,21 @@ int ide_detect_drives(void) {
             if (ide_read(i, ATA_REG_STATUS) == 0) continue;
             
             while (1) {
-                status = ide_read(i, ATA_REG_STATUS);
-                if ((status & ATA_SR_ERR)) {
-                    err = 1;
-                    break;
-                }
-                if (!(status & ATA_SR_BSY) && (status & ATA_SR_DRQ)) break;
-            }
-            
+			    status = ide_read(i, ATA_REG_STATUS);
+			    if ((status & ATA_SR_ERR)) {
+			        err = 1;
+			        break;
+			    }
+			    if (!(status & ATA_SR_BSY) && (status & ATA_SR_DRQ)) break;
+			
+			    // Add timeout counter
+			    timeout--;
+			    if (timeout <= 0) {
+			        printf("IDE: Timeout waiting for drive %d:%d\n", i, j);
+			        err = 1;
+			        break;
+			    }
+			}           
             // Check for ATAPI
             if (err != 0) {
                 uint8_t cl = ide_read(i, ATA_REG_LBA1);

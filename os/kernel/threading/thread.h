@@ -34,6 +34,7 @@ typedef enum {
 */
 typedef struct thread {
     uint32_t tid;                    // Thread ID
+	uint32_t owner_pid;              // The PID which created it
     thread_state_t state;            // Current state
     thread_privilege_t privilege;    // Ring level (0 or 3)
     thread_priority_t priority;      // Thread priority
@@ -41,10 +42,10 @@ typedef struct thread {
     uint64_t stack_base;             // Stack base address
     uint64_t stack_size;             // Stack size
     uint64_t kernel_stack;           // Kernel stack for ring transitions
-    uint32_t time_slice;             // Time quantum
+    uint32_t time_slice;             // Time quantumdon
     uint32_t time_used;              // Time used in current slice
     struct thread* next;             // Next thread in scheduler queue
-    void* user_data;                 // User-defined data
+    void* user_data;                 // User-defined data 
 } thread_t;
 
 // Thread function pointer
@@ -67,11 +68,16 @@ extern uint32_t thread_count;
 	Prototypes
 */
 void threading_init(void);
-thread_t* thread_create(thread_func_t func, void* arg, thread_privilege_t privilege, thread_priority_t priority);
+thread_t* thread_create(thread_func_t func, void* arg, thread_privilege_t privilege, thread_priority_t priority, uint32_t owner_pid);
 int thread_execute(thread_t* thread);
 void thread_exit(void);
+uint32_t gettid(void);
+uint32_t getpid(void);
+void clean_up(thread_t* thread);
 /*
 	Schedular
 */
 void scheduler_tick(interrupt_frame_t* frame);
+void remove_from_ready_queue(thread_t* target);
+void add_to_ready_queue(thread_t* thread);
 #endif

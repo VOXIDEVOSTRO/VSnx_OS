@@ -4,10 +4,6 @@
 	header files
 */
 #include <stdint.h>
-#include "ideata.h"
-#include "ahci.h"
-#include "nvme.h"
-#include "scsi.h"
 #include "../../pci/pci.h"
 /*
     Disk Types

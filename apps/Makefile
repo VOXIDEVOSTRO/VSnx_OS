@@ -1,8 +1,9 @@
 CC = gcc
 LD = ld
 
-CFLAGS = -mno-red-zone -fno-stack-protector -fno-pic -fno-pie \
-         -O0 -fcf-protection=none \
+CFLAGS = -mno-red-zone -fno-stack-protector \
+         -O2 -fcf-protection=none -nostdlib -nostartfiles -static \
+         -ffreestanding -mcmodel=large \
          -c -m64 -march=x86-64 -mtune=generic
 LDFLAGS = -n -T linker.ld -e _start
 

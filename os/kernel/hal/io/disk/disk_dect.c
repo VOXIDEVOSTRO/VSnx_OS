@@ -2,6 +2,10 @@
 	Header files
 */
 #include "disk.h"
+#include "ideata.h"
+#include "ahci.h"
+#include "nvme.h"
+#include "scsi.h"
 /*
 	Known table
 */

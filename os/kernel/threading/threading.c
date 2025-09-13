@@ -1,6 +1,7 @@
 /*
 	Header files
 */
+#include <stdbool.h>
 #include "thread.h"
 #include "../utilities/utility.h"
 #include "../hal/mem/k_mem/k_mem.h"
@@ -46,24 +47,27 @@ void threading_init(void) {
 /*
 	Simple thread creation
 */
-thread_t* thread_create(thread_func_t func, void* arg, thread_privilege_t privilege/*FOR drivers and stuff we need this and maybe for syscall entry we would make wrapper*/, thread_priority_t priority) {
+// Add owner_pid parameter to existing function
+thread_t* thread_create(thread_func_t func, void* arg, thread_privilege_t privilege/*needed for drivers*/, thread_priority_t priority/*unused probably*/, uint32_t owner_pid) {
     if (thread_count >= MAX_THREADS) return NULL;
-    
-	/*
-		Alloc the thread duh..
+    /*
+		Alloc some mem
 	*/
     thread_t* thread = (thread_t*)kmalloc(sizeof(thread_t));
     if (!thread) return NULL;
-    
-    /*
-		alloc the stack for both user and kernel
+	/*
+		Allocate stack based on privilege
 	*/
     if (privilege == THREAD_RING3) {
-        thread->stack_base = (uint64_t)umalloc(THREAD_STACK_SIZE);  // User stack (we will change RSP)
-        thread->kernel_stack = (uint64_t)kmalloc(KERNEL_STACK_SIZE); // Kernel stack (for interrupts)
-        /*
-			Also validate the stack allocation
+		/*
+			ring 3
 		*/
+		/*
+			For both the kernel and thread
+		*/
+        thread->stack_base = (uint64_t)umalloc(THREAD_STACK_SIZE);
+        thread->kernel_stack = (uint64_t)kmalloc(KERNEL_STACK_SIZE);
+        
         if (!thread->stack_base || !thread->kernel_stack) {
             if (thread->stack_base) ufree((void*)thread->stack_base);
             if (thread->kernel_stack) kfree((void*)thread->kernel_stack);
@@ -71,41 +75,44 @@ thread_t* thread_create(thread_func_t func, void* arg, thread_privilege_t privil
             return NULL;
         }
     } else {
-        /*
-			RING 0! use the kernel stack
+		/*
+			ring 0
 		*/
         thread->stack_base = (uint64_t)kmalloc(THREAD_STACK_SIZE);
         thread->kernel_stack = 0;
-        /*
-			validate the stack
-		*/
+        
         if (!thread->stack_base) {
-            kfree(thread); // error
+            kfree(thread);
             return NULL;
         }
     }
     
-    /*
-		INIT the thread values
+	/*
+		init the thread
 	*/
+
     thread->tid = next_tid++;
+    thread->owner_pid = owner_pid;
     thread->state = THREAD_READY;
     thread->privilege = privilege;
     thread->priority = priority;
     thread->stack_size = THREAD_STACK_SIZE;
     thread->next = NULL;
     
-    /*
-		set the conext up
+	/*
+		Init the context
 	*/
+
     thread->context.rsp = thread->stack_base + THREAD_STACK_SIZE - 8;
     thread->context.rip = (uint64_t)func;
     thread->context.rdi = (uint64_t)arg;
     thread->context.rflags = 0x202;
-    thread->context.cs = (privilege == THREAD_RING3) ? USER_CODE_SELECTOR : KERNEL_CODE_SELECTOR; /*based upon the requested ring*/
+    thread->context.cs = (privilege == THREAD_RING3) ? USER_CODE_SELECTOR : KERNEL_CODE_SELECTOR;
     thread->context.ss = (privilege == THREAD_RING3) ? USER_DATA_SELECTOR : KERNEL_DATA_SELECTOR;
     
-    // Add to table. so we can lookup
+    /*
+		add to tabler
+	*/
     for (int i = 1; i < MAX_THREADS; i++) {
         if (thread_table[i] == NULL) {
             thread_table[i] = thread;
@@ -113,9 +120,9 @@ thread_t* thread_create(thread_func_t func, void* arg, thread_privilege_t privil
         }
     }
     
-    thread_count++; // +1
-    printf("THREADING: Created TID=%d\n", thread->tid);
-    return thread; // tid
+    thread_count++; // +1 TID
+    printf("THREADING: Created TID=%d for PID=%d\n", thread->tid, owner_pid);
+    return thread; // TID
 }
 
 /*
@@ -148,42 +155,189 @@ void thread_exit(void) {
 	/*
 		Validate and make sure its NOT the kernel OR CHAOS
 	*/
-    if (!current_thread || current_thread->tid == 0) return;
+    if (!current_thread) {
+        printf("THREADING: No current thread to exit\n");
+        return;
+    }
+    /*
+		In case if a kernel is calling? i have no idea would it?
+	*/
+    if (current_thread->tid == 0) {
+        printf("THREADING: Cannot exit kernel thread\n");
+        return;
+    }
     
     printf("THREADING: TID=%d exiting\n", current_thread->tid);
     
+    thread_t* exiting_thread = current_thread;
+    current_thread->state = THREAD_TERMINATED;
+	remove_from_ready_queue(current_thread);
+    thread_count--;
     /*
-		Saving up
+		Brush everything up to clean
 	*/
-    if (current_thread->privilege == THREAD_RING3) {
-        ufree((void*)current_thread->stack_base);
-    } else {
-        kfree((void*)current_thread->stack_base);
+    clean_up(exiting_thread);
+    /*
+		free thread
+	*/
+    
+    printf("THREADING: Thread exit cleanup complete\n");
+	// No return but still the binary may have a return statment
+}
+
+/*
+	Terminate. ez
+*/
+int thread_terminate(uint32_t tid) {
+    /*
+        to prevent a M of the kernel . validate
+    */
+    if (tid == 0) {
+        printf("THREADING: Cannot terminate kernel thread (TID=0)\n");
+        return -1;
     }
     
-    // Remove from table to avoid the schedular intererfering nulled our code
+    /*
+        Find the thread duh
+    */
+    thread_t* target_thread = NULL;
+    
+    for (int i = 1; i < MAX_THREADS; i++) {
+        if (thread_table[i] && thread_table[i]->tid == tid) {
+            target_thread = thread_table[i];
+            break;
+        }
+    }
+    
+    /*
+        Thread not found (probably doesnt exists)
+    */
+    if (!target_thread) {
+        printf("THREADING: TID=%d not found\n", tid);
+        return -2;
+    }
+    
+    printf("THREADING: Terminating TID=%d (PID=%d)\n", target_thread->tid, target_thread->owner_pid);
+    
+    /*
+        Nullify if current
+    */
+    if (target_thread == current_thread) {
+        printf("THREADING: Terminating current thread, clearing current_thread\n");
+        current_thread->state = THREAD_TERMINATED;
+    }
+    
+    /*
+        Clean up all resources of the thread
+    */
+    clean_up(target_thread);
+    
+    /*
+        Free the thread structure itself
+    */
+    kfree(target_thread);
+    
+    printf("THREADING: TID=%d terminated successfully\n", tid);
+    return 0;
+}
+/*
+	Small implimnatation for getting the thread id
+*/
+uint32_t gettid(void) {
+    if (current_thread == NULL) {
+        return 0;
+    }
+    return current_thread->tid;
+}
+
+uint32_t getpid(void) {
+    if (current_thread == NULL) {
+        return 0;
+    }
+    return current_thread->owner_pid;
+}
+
+thread_t* thread_get_by_tid(uint32_t tid) {
     for (int i = 0; i < MAX_THREADS; i++) {
-        if (thread_table[i] == current_thread) {
+        if (thread_table[i] && thread_table[i]->tid == tid) {
+            return thread_table[i];
+        }
+    }
+	/*
+		Thread missing
+	*/
+    return NULL;
+}
+
+/*
+    Check if thread exists by TID
+*/
+bool thread_exists(uint32_t tid) {
+    return thread_get_by_tid(tid) != NULL;
+}
+
+/*
+    Get thread state by TID
+*/
+thread_state_t thread_get_state(uint32_t tid) {
+    thread_t* thread = thread_get_by_tid(tid);
+    if (!thread) {
+        return -1;
+    }
+    return thread->state;
+}
+
+/*
+	Some healperz
+*/
+
+void clean_up(thread_t* thread) {
+    if (!thread) return;
+    
+    printf("THREADING: Cleaning up resources for TID=%d\n", thread->tid);
+
+	/*
+		MOST important fix:
+		REMOVE AND CALL schedular to do a STACK change!
+		becuase the thread_exit RETURNS but the issue is
+		we cant stop it via a like a HALT loop or something.
+		So toavoid page faults. WE dont free the stack until
+		the scheduler is at a diffrent stack so in the return
+		we resturn to a already active stack and free later.
+	*/
+
+	remove_from_ready_queue(thread);
+    __asm__ volatile("int $0x20");
+
+    if (thread->privilege == THREAD_RING3) {
+        if (thread->stack_base) {
+            ufree((void*)thread->stack_base);
+            thread->stack_base = 0;
+        }
+        if (thread->kernel_stack) {
+            kfree((void*)thread->kernel_stack);
+            thread->kernel_stack = 0;
+        }
+    } else {
+        if (thread->stack_base) {
+            kfree((void*)thread->stack_base);
+            thread->stack_base = 0;
+        }
+    }
+    
+    /*
+		Remove from table
+		or else confustion
+	*/
+    for (int i = 0; i < MAX_THREADS; i++) {
+        if (thread_table[i] == thread) {
             thread_table[i] = NULL;
             break;
         }
     }
     
-	/*free the thread itself*/
-    kfree(current_thread);
-    thread_count--;
+    // duh...
+    thread->state = THREAD_TERMINATED;
     
-    // TO BE REMOVED! BECUASE SCHEDULAR DOESNT care it just want to see the queue and THIS may cause problems!
-	/*
-    if (ready_queue) {
-        current_thread = ready_queue;
-        ready_queue = ready_queue->next;
-        current_thread->next = NULL;
-        current_thread->state = THREAD_RUNNING;
-        
-        // Jump to thread
-        __asm__ volatile("mov %0, %%rsp; jmp *%1" 
-            : : "m"(current_thread->context.rsp), "m"(current_thread->context.rip));
-    }
-	*/
-}
+    thread_count--; // -1
+} 

@@ -2,6 +2,10 @@
 	HEADERS!!!!!!!!!!!!!!!!!!!!!!!
 */
 #include "disk.h"
+#include "ideata.h"
+#include "ahci.h"
+#include "nvme.h"
+#include "scsi.h"
 /*
 	THIS will mostly hold HAL driver wrappers to provide a cenetralized control
 */
@@ -106,10 +110,39 @@ int disk_detect_all(void) {
             }
         }
     }
-    
-    // TODO: Add AHCI/SATA detection
-    // TODO: Add NVMe detection
-    // TODO: Add SCSI detection
+
+	// Detect AHCI/SATA disks
+	printf("DISK: Scanning for AHCI/SATA devices\n");
+	if (ahci_init() == 0) {
+	    // AHCI controller initialized successfully
+	    for (int i = 0; i < ahci_ctrl.port_count; i++) {
+	        ahci_port_t* port = &ahci_ctrl.ports[i];
+	        if (port->base != 0) {
+	            // Create a temporary disk structure for identification
+	            disk_t temp_disk;
+	            temp_disk.driver_data = port;
+			
+	            // Try to identify the device
+	            if (ahci_identify(&temp_disk) == 0) {
+	                int disk_id = disk_register(
+	                    DISK_TYPE_AHCI,
+	                    temp_disk.sectors,
+	                    temp_disk.model,
+	                    "AHCI_SERIAL", // AHCI serial extraction needs more work
+	                    0, 0, 0, // PCI location from AHCI controller
+	                    port
+	                );
+				
+	                if (disk_id >= 0) {
+	                    total_disks++;
+	                    printf("DISK: Registered AHCI disk %d\n", disk_id);
+	                }
+	            }
+	        }
+	    }
+	} else {
+	    printf("DISK: No AHCI controller found or initialization failed\n");
+	}
     
     printf("DISK: Detection complete - found %d disks\n", total_disks);
     return total_disks;
@@ -180,10 +213,16 @@ int disk_read(uint8_t disk_id, uint64_t lba, uint32_t count, void* buffer) {
             return -5;
             
         case DISK_TYPE_AHCI:
-        case DISK_TYPE_SATA:
-            printf("DISK: AHCI/SATA read not implemented\n");
-            return -6;
-            
+		case DISK_TYPE_SATA: {
+		    int result = ahci_read(disk, lba, count, buffer);
+		    if (result != 0) {
+		        printf("DISK: AHCI read error %d\n", result);
+		        return -6;
+		    }
+		    printf("DISK: Successfully read %u sectors via AHCI\n", count);
+		    return 0;
+		}
+
         case DISK_TYPE_NVME:
             printf("DISK: NVMe read not implemented\n");
             return -7;
@@ -253,10 +292,15 @@ int disk_write(uint8_t disk_id, uint64_t lba, uint32_t count, const void* buffer
             return -5;
             
         case DISK_TYPE_AHCI:
-        case DISK_TYPE_SATA:
-            printf("DISK: AHCI/SATA write not implemented\n");
-            return -6;
-            
+		case DISK_TYPE_SATA: {
+		    int result = ahci_write(disk, lba, count, buffer);
+		    if (result != 0) {
+		        printf("DISK: AHCI write error %d\n", result);
+		        return -6;
+		    }
+		    printf("DISK: Successfully wrote %u sectors via AHCI\n", count);
+		    return 0;
+		}
         case DISK_TYPE_NVME:
             printf("DISK: NVMe write not implemented\n");
             return -7;

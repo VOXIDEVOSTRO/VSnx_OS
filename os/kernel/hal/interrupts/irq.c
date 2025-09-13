@@ -14,7 +14,7 @@ void irq_handler(interrupt_frame_t* frame) {
     /*
 		Validate the IRQ
 	*/
-    uint32_t irq_num = frame->int_no - 32; // calculate the irq number by: the IRQx , x = interrupt number - 32
+    uint32_t irq_num = frame->int_no - 32; // calculate the irq number by: the IRQx , x = interrupt number - 32, thats maths baby
     if (irq_num > 15) return;
     
     /*
@@ -26,6 +26,8 @@ void irq_handler(interrupt_frame_t* frame) {
     outb(0x20, 0x20);
     /*
 		case switch for handling the IRQs
+		because easier and more optimized then an elseif
+		(Learned from my older VOSTROX)
 	*/
     switch (irq_num) {
         case 0:
@@ -34,7 +36,7 @@ void irq_handler(interrupt_frame_t* frame) {
 			*/
 			scheduler_tick(frame);
             break;
-        case 1:  // Keyboard - just return for now
+        case 1:  // Keyboard - just return for now cuz yea
             break;
         default:
             break;
