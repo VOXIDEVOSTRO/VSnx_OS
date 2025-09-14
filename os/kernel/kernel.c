@@ -65,25 +65,34 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		here SO we have an idea what code
 		destroyed itself or kernel
 	*/
+	#ifdef DEBUG
     serial_init(COM1_PORT);
     serial_print(COM1_PORT, "VSnx Kernel Starting...\r\n"); // Simplest possible
+	#endif
 	/*
 		Now the VGA! because why not (text)
 		also we detect if VGA text there.
 	*/
     if(vga_text_init() == 0) {
-		vga_println("VSnx Kernel - VGA Active!");
+		#ifdef DEBUG
+		printf("VSnx Kernel - VGA Active!\n");
+		#endif
 		/*
 			The reason for dual output. because i am lazy to check the Serial everytime
 			or just i thought of it as a great idea to not keep the screen empty LOL
 		*/
+		#ifdef DEBUG
 		printf("VSnx: Dual output (Serial + VGA) ready\n");
+		#endif
 	} else {
 		/*
 			Incase No VGA text here
 		*/
+		#ifdef DEBUG
 		printf("VSnx: Serial-only mode\n");
+		#endif
 	}
+	printf("VSnx booted...Starting init\n");
 	/*
 		time for the memory map. and important for AMD64 system or x86_64.
 		As we need to use as much memory we can. And to get the picture.
@@ -93,13 +102,17 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		the argumnet so we can easily pass on here.
 	*/
 	if(multiboot2_parse_memory_map(multiboot_info_addr) == 0) {
+		#ifdef DEBUG
 		printf("VSnx: Memory map parsed successfully\n");
+		#endif
 		/*
 			Just for debug. what more can i say
 		*/
 		print_memory_map();
 	} else {
+		#ifdef DEBUG
 		printf("VSnx: Memory map parsing failed\n");
+		#endif
 		return; // YOU FAILURE!!!!!!!
 	}
 	/*
@@ -110,7 +123,9 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		interrupts like keyboard, PS2 mouse etc... but software ones too like
 		the syscalls.
 	*/
+	#ifdef DEBUG
 	printf("VSnx: Initializing interrupt system...\n");
+	#endif
 	/*
 		Init the GDT
 	*/
@@ -125,7 +140,9 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		acsess to it. its a fairly simple and also VMM is based on top
 		of the PMM and dependent.
 	*/
+	#ifdef DEBUG
 	printf("VSnx: Initializing Physical Memory Manager...\n");
+	#endif
 	pmm_init();
 	/*
 		print the random statistics. (probably spelled it wrong)
@@ -138,10 +155,14 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		and which is pretty massive but ALL of this FOLLOW one thing common. On demand mapping
 		we dont map uneccesary memory in any of these steps.
 	*/
+	#ifdef DEBUG
 	printf("VSnx: Initializing paging system...\n");
+	#endif
 	paging_init();
 	paging_print_info();
+	#ifdef DEBUG
 	printf("VSnx: Initializing VMM...\n");
+	#endif
 	vmm_init();
 	vmm_print_info();
 	/*
@@ -149,7 +170,9 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		and this holds like USB, network, audio, GPU, AHCI, and other things.
 		For now we only have AHCI or SATA disk control tied to it.
 	*/
+	#ifdef DEBUG
 	printf("VSnx: Initializing PCI...\n");
+	#endif
 	pci_init();
 	pci_print_devices();	
 	/*
@@ -157,12 +180,16 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		detect the disk. becuase we need to know it so we don't write to a phantom
 		or some broken stuff.
 	*/
+	#ifdef DEBUG
 	printf("VSnx: Detecting the disk...\n");
+	#endif
 	disk_detection_init();
 	/*
 		Also init it
 	*/
+	#ifdef DEBUG
 	printf("VSnx: Initializing disk...\n");
+	#endif
 	disk_init();
 	/*
 		And storage controllers. Our OS currently on has
@@ -183,15 +210,23 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		/*
 			Also do a test to make sure if the disk is acsessible and working
 		*/
+	    #ifdef DEBUG
 	    printf("VSnx: Testing disk I/O...\n");
+	    #endif
 	    int test_result = disk_test_io(0);
 	    if (test_result == 0) {
+	        #ifdef DEBUG
 	        printf("VSnx: Disk I/O test PASSED\n");
+	        #endif
 	    } else {
+			#ifdef DEBUG
 	        printf("VSnx: Disk I/O test FAILED (error %d)\n", test_result); // erro
-	    }
+			#endif
+		}
 	} else {
+	    #ifdef DEBUG
 	    printf("VSnx: No disks detected\n");
+	    #endif
 	}
 
 	/*
@@ -200,22 +235,32 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		we init its block device. and mount it. duh....
 	*/
 	if (total_disks > 0) {
+	    #ifdef DEBUG
 	    printf("VSnx: Initializing block device...\n");
+	    #endif
 		/*
 			init the block interface. 
 		*/
 	    if (block_init() == 0) {
+	        #ifdef DEBUG
 	        printf("VSnx: Block device ready\n");
+	        #endif
 			/*
 				Mount the filesystem
 			*/
+	        #ifdef DEBUG
 	        printf("VSnx: Mounting FAT filesystem...\n");
+	        #endif
 	        blockno_t volume_size = block_get_volume_size();
 	        if (fat_mount(0, volume_size, 0) == 0) {
+	            #ifdef DEBUG
 	            printf("VSnx: FAT filesystem mounted successfully!\n");
+	            #endif
 			
 	        } else {
+	            #ifdef DEBUG
 	            printf("VSnx: Failed to mount FAT filesystem\n");
+	            #endif
 	        }
 	    } else {
 	    }
@@ -223,14 +268,18 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		/*
 			Incase something wrong
 		*/
+		#ifdef DEBUG
 		printf("VSnx: No disks detected\n");
+		#endif
 	}
 	/*
 		So the most important. The threading/multithreading. and process management or tracking.
 		Absoulte beast of thing here. thread make the fabric of this OS or any process... press F to pay
 		respect
 	*/
+	#ifdef DEBUG
 	printf("VSnx: Initializing threading system...\n");
+	#endif
 	threading_init();
 	/*
 		just after it... THE SYSCALLS. standard of communication between kernel and thread for some
@@ -244,46 +293,72 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 	process_t* test1_proc = spawn_process("MODULES/APPS/TEST1.ELF"/*TESTING but syscalls and exit*/, THREAD_RING3);
 	process_t* test2_proc = spawn_process("MODULES/APPS/TEST2.ELF"/*testing the schedular*/, THREAD_RING3);
 	if (test_proc) {
+	    #ifdef DEBUG
 	    printf("PROCESS: Successfully created process\n");
+	    #endif
 		/*
 			execute the process DUH...
 		*/
 	    if (execute_process(test_proc) == 0) {
+	        #ifdef DEBUG
 	        printf("PROCESS: Process started successfully\n");
+	        #endif
 	    } else {
+	        #ifdef DEBUG
 	        printf("PROCESS: Failed to start process\n");
+	        #endif
 	    }
 	} else {
+	    #ifdef DEBUG
 	    printf("PROCESS: Failed to spawn process\n");
+	    #endif
 	}
 	if (test1_proc) {
+	    #ifdef DEBUG
 	    printf("PROCESS: Successfully created process\n");
+	    #endif
 		/*
 			execute the process DUH...
 		*/
 	    if (execute_process(test1_proc) == 0) {
+	        #ifdef DEBUG
 	        printf("PROCESS: Process started successfully\n");
+	        #endif
 	    } else {
+	        #ifdef DEBUG
 	        printf("PROCESS: Failed to start process\n");
+	        #endif
 	    }
 	} else {
+	    #ifdef DEBUG
 	    printf("PROCESS: Failed to spawn process\n");
+	    #endif
 	}
 	if (test2_proc) {
+	    #ifdef DEBUG
 	    printf("PROCESS: Successfully created process\n");
+	    #endif
 		/*
 			execute the process DUH...
 		*/
 	    if (execute_process(test2_proc) == 0) {
+	        #ifdef DEBUG
 	        printf("PROCESS: Process started successfully\n");
+	        #endif
 	    } else {
+	        #ifdef DEBUG
 	        printf("PROCESS: Failed to start process\n");
+	        #endif
 	    }
 	} else {
+	    #ifdef DEBUG
 	    printf("PROCESS: Failed to spawn process\n");
+	    #endif
 	}
 
+	#ifdef DEBUG
 	printf("VSnx: Done\n");
+	#endif
 	
     // Kernel idling
     while (1) {

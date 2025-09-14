@@ -127,10 +127,14 @@ int ide_polling(uint8_t channel, uint32_t advanced_check) {
 int ide_print_error(uint32_t drive, uint8_t err) {
     if (err == 0) return err;
     
+    #ifdef DEBUG
     printf("IDE: Error on drive %u: ", drive);
+    #endif
     
     if (err == 1) {
+        #ifdef DEBUG
         printf("Device Fault\n");
+        #endif
         err = 19;
     } else if (err == 2) {
         uint8_t st = ide_read(ide_devices[drive].channel, ATA_REG_ERROR);
@@ -144,10 +148,14 @@ int ide_print_error(uint32_t drive, uint8_t err) {
         if (st & ATA_ER_BBK) printf("Bad Sectors\n");
         err = 22;
     } else if (err == 3) {
+        #ifdef DEBUG
         printf("Reads Nothing\n");
+        #endif
         err = 23;
     } else if (err == 4) {
+        #ifdef DEBUG
         printf("Write Protected\n");
+        #endif
         err = 8;
     }
     
@@ -158,12 +166,16 @@ int ide_print_error(uint32_t drive, uint8_t err) {
     Initialize IDE controller
 */
 void ide_init(void) {
+    #ifdef DEBUG
     printf("IDE: Initializing IDE/ATA controller\n");
+    #endif
     
     // Find IDE controller via PCI
     pci_device_t* ide_pci = pci_find_class(PCI_CLASS_STORAGE, PCI_SUBCLASS_IDE);
     if (!ide_pci) {
+        #ifdef DEBUG
         printf("IDE: No IDE controller found\n");
+        #endif
         return;
     }
     
@@ -179,14 +191,18 @@ void ide_init(void) {
     ide_write(ATA_PRIMARY, ATA_REG_CONTROL, 2);
     ide_write(ATA_SECONDARY, ATA_REG_CONTROL, 2);
     
+    #ifdef DEBUG
     printf("IDE: Controller initialized\n");
+    #endif
 }
 
 /*
     Detect IDE drives
 */
 int ide_detect_drives(void) {
+    #ifdef DEBUG
     printf("IDE: Detecting IDE drives\n");
+    #endif
     
     int count = 0;
     
@@ -222,7 +238,9 @@ int ide_detect_drives(void) {
 			    // Add timeout counter
 			    timeout--;
 			    if (timeout <= 0) {
+			        #ifdef DEBUG
 			        printf("IDE: Timeout waiting for drive %d:%d\n", i, j);
+			        #endif
 			        err = 1;
 			        break;
 			    }
@@ -272,12 +290,9 @@ int ide_detect_drives(void) {
 			    ide_devices[count].model[k * 2 + 1] = word & 0xFF;        // Low byte second
 			}
 			ide_devices[count].model[40] = '\0';
-            
-            printf("IDE: Found %s drive: %s (%u MB)\n",
-                   (type == IDE_ATA) ? "ATA" : "ATAPI",
-                   ide_devices[count].model,
-                   ide_devices[count].size / 1024 / 2);
-            
+            #ifdef DEBUG
+            printf("IDE: Found %s drive: %s (%u MB)\n", (type == IDE_ATA) ? "ATA" : "ATAPI", ide_devices[count].model, ide_devices[count].size / 1024 / 2);
+            #endif
             count++;
         }
     }

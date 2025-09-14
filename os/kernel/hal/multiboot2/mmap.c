@@ -16,7 +16,9 @@ int multiboot2_parse_memory_map(uint64_t multiboot2_addr) {
     multiboot2_info_t* mbi = (multiboot2_info_t*)multiboot2_addr;
     multiboot2_tag_t* tag;
     
+    #ifdef DEBUG
     printf("MULTIBOOT2: Parsing memory map...\n");
+    #endif
     
     /*
 		Start with the fix part
@@ -31,7 +33,9 @@ int multiboot2_parse_memory_map(uint64_t multiboot2_addr) {
             multiboot2_tag_mmap_t* mmap_tag = (multiboot2_tag_mmap_t*)tag;
             uint32_t entry_count = (mmap_tag->size - sizeof(multiboot2_tag_mmap_t)) / mmap_tag->entry_size;
             
+            #ifdef DEBUG
             printf("MULTIBOOT2: Found memory map with %u entries\n", entry_count);
+            #endif
             
 			/*
 				Initilize
@@ -59,11 +63,15 @@ int multiboot2_parse_memory_map(uint64_t multiboot2_addr) {
                 vsnx_mmap.region_count++;
             }
             
+            #ifdef DEBUG
             printf("MULTIBOOT2: Memory map parsed successfully\n");
-            printf("MULTIBOOT2: Total memory: %lx bytes (%lu MB)\n", 
-                   vsnx_mmap.total_memory, vsnx_mmap.total_memory / (1024*1024));
-            printf("MULTIBOOT2: Usable memory: %lx bytes (%lu MB)\n", 
-                   vsnx_mmap.usable_memory, vsnx_mmap.usable_memory / (1024*1024));
+            #endif
+            #ifdef DEBUG
+            printf("MULTIBOOT2: Total memory: %lx bytes (%lu MB)\n", vsnx_mmap.total_memory, vsnx_mmap.total_memory / (1024*1024));
+            #endif
+            #ifdef DEBUG
+            printf("MULTIBOOT2: Usable memory: %lx bytes (%lu MB)\n", vsnx_mmap.usable_memory, vsnx_mmap.usable_memory / (1024*1024));
+            #endif
             return 0;
         }
         
@@ -71,15 +79,21 @@ int multiboot2_parse_memory_map(uint64_t multiboot2_addr) {
         tag = (multiboot2_tag_t*)((uint8_t*)tag + ((tag->size + 7) & ~7));
     }
     
+    #ifdef DEBUG
     printf("MULTIBOOT2: No memory map found\n");
+    #endif
     return -1; // error
 }
 /*
 	Print detailed memory map
 */
 void print_memory_map(void) {
+    #ifdef DEBUG
     printf("=== VSnx Memory Map ===\n");
+    #endif
+    #ifdef DEBUG
     printf("Regions: %u\n", vsnx_mmap.region_count);
+    #endif
     
     for (uint32_t i = 0; i < vsnx_mmap.region_count; i++) {
         const char* type_str;
@@ -92,10 +106,9 @@ void print_memory_map(void) {
             default: type_str = "Unknown"; break;
         }
         
-        printf("Region %u: 0x%lx - 0x%lx (%s)\n", 
-               i, vsnx_mmap.regions[i].base_addr, 
-               vsnx_mmap.regions[i].base_addr + vsnx_mmap.regions[i].length - 1,
-               type_str);
+        #ifdef DEBUG
+        printf("Region %u: 0x%lx - 0x%lx (%s)\n", i, vsnx_mmap.regions[i].base_addr, vsnx_mmap.regions[i].base_addr + vsnx_mmap.regions[i].length - 1, type_str);
+        #endif
     }
 }
 /*

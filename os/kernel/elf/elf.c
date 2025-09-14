@@ -7,14 +7,18 @@
 	This will just find and open and parse the ELF binary. ez
 */
 uint64_t elf_parse(const char* filename) {
+    #ifdef DEBUG
     printf("ELF: Loading %s\n", filename);
+    #endif
     /*
 		open the file DUH...
 	*/
     int rerrno = 0; // Keep it NULL
     int fd = fat_open(filename, O_RDONLY, 0, &rerrno);
     if (fd < 0) {
+        #ifdef DEBUG
         printf("ELF: Failed to open %s\n", filename);
+        #endif
         return 0;
     }
     /*
@@ -22,7 +26,9 @@ uint64_t elf_parse(const char* filename) {
 	*/
     elf64_hdr_t elf_hdr;
     if (fat_read(fd, &elf_hdr, sizeof(elf_hdr), &rerrno) != sizeof(elf_hdr)) {
+        #ifdef DEBUG
         printf("ELF: Failed to read header\n");
+        #endif
         fat_close(fd, &rerrno);
         return 0;
     }
@@ -31,7 +37,9 @@ uint64_t elf_parse(const char* filename) {
 		The magic is [0x7F]ELF
 	*/
     if (*(uint32_t*)elf_hdr.e_ident != ELF_MAGIC) {
+        #ifdef DEBUG
         printf("ELF: Invalid magic number\n");
+        #endif
         fat_close(fd, &rerrno);
         return 0;
     }
@@ -40,12 +48,16 @@ uint64_t elf_parse(const char* filename) {
 		we are in a AMD64/x86-64
 	*/
     if (elf_hdr.e_machine != EM_X86_64 || elf_hdr.e_type != ET_EXEC) {
+        #ifdef DEBUG
         printf("ELF: Unsupported format\n");
+        #endif
         fat_close(fd, &rerrno);
         return 0;
     }
     
+    #ifdef DEBUG
     printf("ELF: Valid x86-64 executable, entry=0x%lx\n", elf_hdr.e_entry);
+    #endif
     
     uint64_t actual_entry_point = 0;
     
@@ -61,7 +73,9 @@ uint64_t elf_parse(const char* filename) {
         if (phdr.p_type == PT_LOAD) {
             uint64_t loaded_entry = elf_load_segment(&phdr, fd, elf_hdr.e_entry);
             if (loaded_entry == 0) {
+                #ifdef DEBUG
                 printf("ELF: Failed to load segment %d\n", i);
+                #endif
                 fat_close(fd, &rerrno);
                 return 0;
             }
@@ -72,7 +86,9 @@ uint64_t elf_parse(const char* filename) {
             if (elf_hdr.e_entry >= phdr.p_vaddr && 
                 elf_hdr.e_entry < phdr.p_vaddr + phdr.p_memsz) {
                 actual_entry_point = loaded_entry;
+                #ifdef DEBUG
                 printf("ELF: Entry point found in segment %d at 0x%lx\n", i, actual_entry_point);
+                #endif
             }
         }
     }
@@ -83,11 +99,15 @@ uint64_t elf_parse(const char* filename) {
     fat_close(fd, &rerrno);
     
     if (actual_entry_point == 0) {
+        #ifdef DEBUG
         printf("ELF: Entry point not found in any loaded segment\n");
+        #endif
         return 0;
     }
     
+    #ifdef DEBUG
     printf("ELF: Loaded successfully, entry=0x%lx\n", actual_entry_point);
+    #endif
 	/*
 		if any entry point is found, return it
 	*/
@@ -97,19 +117,24 @@ uint64_t elf_parse(const char* filename) {
 	This will load the segments into memory and find the entry point BECAUSE VMM
 */
 uint64_t elf_load_segment(elf64_phdr_t* phdr, int fd, uint64_t elf_entry) {
-    printf("ELF: Loading segment vaddr=0x%lx size=%lu\n", 
-           phdr->p_vaddr, phdr->p_memsz);
+	#ifdef DEBUG
+    printf("ELF: Loading segment vaddr=0x%lx size=%lu\n", phdr->p_vaddr, phdr->p_memsz);
+	#endif
     
     /*
 		Alloc some memory via VMM
 	*/
     void* segment_mem = umalloc(phdr->p_memsz);
     if (!segment_mem) {
+        #ifdef DEBUG
         printf("ELF: VMM allocation failed for segment\n");
+        #endif
         return 0;
     }
     
+    #ifdef DEBUG
     printf("ELF: VMM allocated segment at 0x%lx\n", (uint64_t)segment_mem);
+    #endif
     
     int rerrno = 0; // NULLIFY
     fat_lseek(fd, phdr->p_offset, SEEK_SET, &rerrno);
@@ -118,7 +143,9 @@ uint64_t elf_load_segment(elf64_phdr_t* phdr, int fd, uint64_t elf_entry) {
 		read segment data to be loaded in the VMM
 	*/
     if (fat_read(fd, segment_mem, phdr->p_filesz, &rerrno) != phdr->p_filesz) {
+        #ifdef DEBUG
         printf("ELF: Failed to read segment data\n");
+        #endif
         ufree(segment_mem);  // Clean up VMM allocation
         return 0;
     }
@@ -131,7 +158,9 @@ uint64_t elf_load_segment(elf64_phdr_t* phdr, int fd, uint64_t elf_entry) {
                 phdr->p_memsz - phdr->p_filesz);
     }
     
+    #ifdef DEBUG
     printf("ELF: Segment loaded via VMM at 0x%lx\n", (uint64_t)segment_mem);
+    #endif
     
     /*
 		NOW properly calculate the entry point BECAUSE VMM
@@ -150,7 +179,9 @@ uint64_t elf_load_segment(elf64_phdr_t* phdr, int fd, uint64_t elf_entry) {
         uint64_t offset = elf_entry - phdr->p_vaddr;
         uint64_t actual_entry = (uint64_t)segment_mem + offset;
         
+        #ifdef DEBUG
         printf("ELF: Entry point mapped from 0x%lx to 0x%lx\n", elf_entry, actual_entry);
+        #endif
         return actual_entry;
     }
     

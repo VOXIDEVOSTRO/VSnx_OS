@@ -81,13 +81,17 @@ int vga_text_init(void) {
 			Clear the artifacts
 		*/
     	vga_text_clear();
+		#ifdef DEBUG
     	serial_print(COM1_PORT, "VGA_TEXT: Initialized\r\n"); // Done
+		#endif
 		return 0;
 	} else {
 		/*
 			If non - continue
 		*/
+		#ifdef DEBUG
 		serial_print(COM1_PORT, "VGA_TEXT: Failed to initialize, No VGA text available.\r\n");
+		#endif
 		return -1;
 	}
 }

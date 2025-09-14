@@ -109,7 +109,11 @@ static const char* get_controller_type_name(disk_type_t type) {
     Detect all storage controllers
 */
 int disk_detect_controllers(void) {
+	#ifdef DEBUG
+    #ifdef DEBUG
     printf("DISK: Detecting storage controllers...\n");
+    #endif
+	#endif
     
     int controller_count = 0; // init
     
@@ -147,10 +151,9 @@ int disk_detect_controllers(void) {
                 }
                 
                 if (type != DISK_TYPE_UNKNOWN) {
-                    printf("DISK: Found %s at %02x:%02x.%x (%04x:%04x) - %s\n",
-                           get_controller_type_name(type), bus, device, function,
-                           vendor_id, device_id, name);
-                    
+                    #ifdef DEBUG
+                    printf("DISK: Found %s at %02x:%02x.%x (%04x:%04x) - %s\n", get_controller_type_name(type), bus, device, function, vendor_id, device_id, name);
+                    #endif
                     // Read BARs for I/O addresses (could be just I/O or Memory mapped I/O)
                     uint32_t bar0 = pci_config_read(bus, device, function, PCI_BAR0);
                     uint32_t bar1 = pci_config_read(bus, device, function, PCI_BAR1);
@@ -158,27 +161,41 @@ int disk_detect_controllers(void) {
                     uint32_t bar3 = pci_config_read(bus, device, function, PCI_BAR3);
                     uint32_t bar4 = pci_config_read(bus, device, function, PCI_BAR4);
                     uint32_t bar5 = pci_config_read(bus, device, function, PCI_BAR5);
-                    
+                    #ifdef DEBUG
                     printf("DISK:   BARs: %08x %08x %08x %08x %08x %08x\n",
                            bar0, bar1, bar2, bar3, bar4, bar5);
-                    
+                    #endif
                     // Initialize appropriate driver(some are just stubs)
                     switch (type) {
                         case DISK_TYPE_IDE_ATA:
+							#ifdef DEBUG
+                            #ifdef DEBUG
                             printf("DISK:   Initializing IDE/ATA driver\n");
+                            #endif
+							#endif
                             break;
                         case DISK_TYPE_AHCI: /*They the same thing*/
                         case DISK_TYPE_SATA:
+							#ifdef DEBUG
+                            #ifdef DEBUG
                             printf("DISK:   Initializing AHCI/SATA driver\n");
+                            #endif
+							#endif
                             break; // stub
                         case DISK_TYPE_NVME:
+                            #ifdef DEBUG
                             printf("DISK:   Initializing NVMe driver\n");
+                            #endif
                             break; // stub
                         case DISK_TYPE_SCSI:
+                            #ifdef DEBUG
                             printf("DISK:   Initializing SCSI driver\n");
+                            #endif
                             break; //stub
                         default:
+                            #ifdef DEBUG
                             printf("DISK:   No driver available\n");
+                            #endif
                             break;// stub
                     }
                     
@@ -194,7 +211,9 @@ int disk_detect_controllers(void) {
         }
     }
     
+    #ifdef DEBUG
     printf("DISK: Found %d storage controllers\n", controller_count);
+    #endif
     return controller_count;
 }
 
@@ -202,7 +221,9 @@ int disk_detect_controllers(void) {
     Initialize disk detection system
 */
 void disk_detection_init(void) {
+    #ifdef DEBUG
     printf("DISK: Initializing disk detection system\n");
+    #endif
     
     /*
 		gett the storage controllers
@@ -210,9 +231,13 @@ void disk_detection_init(void) {
     int controllers = disk_detect_controllers();
     
     if (controllers == 0) {
+        #ifdef DEBUG
         printf("DISK: No storage controllers found\n");
+        #endif
         return;
     }
     
+    #ifdef DEBUG
     printf("DISK: Detection complete\n");
+    #endif
 }

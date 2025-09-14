@@ -7,6 +7,7 @@
 #include "../../../utilities/utility.h"
 #include "../../serial_com/serial.h"
 #include "../gdt/gdt.h"
+//#define DEBUG /*UNCOMMENT THIS TO SEE EXTRA OUTPUT!*/
 /*
 	Structs
 */

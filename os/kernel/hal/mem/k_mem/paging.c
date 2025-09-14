@@ -41,7 +41,9 @@ page_table_t* allocate_page_table(void) {
     Initialize paging system
 */
 void paging_init(void) {
+    #ifdef DEBUG
     printf("PAGING: Initializing safe paging system\n");
+    #endif
     
     /*
 		gett he control register 3.
@@ -51,19 +53,25 @@ void paging_init(void) {
     __asm__ volatile("mov %%cr3, %0" : "=r"(cr3_value));
     page_mgr.pml4 = (page_table_t*)cr3_value;
     
+    #ifdef DEBUG
     printf("PAGING: Using existing PML4 at 0x%lx\n", (uint64_t)page_mgr.pml4);
+    #endif
     
     /*
 		And also map the KERNEL SPACE to keep it acsessible thru-out
 	*/
+    #ifdef DEBUG
     printf("PAGING: Identity mapping kernel space\n");
+    #endif
     for (uint64_t addr = 0; addr < 0x4000000; addr += 0x200000) {
 		/*
 			Using 2MB granularity for it
 			and may only need 2 pages for it because kernel maybe ~1MB and the stack for kernela bout somehere ~16KB
 		*/
         if (!paging_map_page_2mb(addr, addr, PAGE_PRESENT | PAGE_WRITABLE)) {
+            #ifdef DEBUG
             printf("PAGING: Failed to map kernel page at 0x%lx\n", addr);
+            #endif
             return;
         }
     }
@@ -71,7 +79,9 @@ void paging_init(void) {
     // Flush TLB as normal
     __asm__ volatile("mov %%cr3, %%rax; mov %%rax, %%cr3" ::: "rax", "memory");
     
+    #ifdef DEBUG
     printf("PAGING: System ready with kernel mapped\n");
+    #endif
 }
 
 // Add 2MB page mapping function
@@ -214,35 +224,51 @@ uint64_t paging_get_physical(uint64_t vaddr) {
 	re purposed to test
 */
 void paging_print_info(void) {
-	printf("VSnx: Testing paging system...\n");	
+	#ifdef DEBUG
+	printf("VSnx: Testing paging system...\n");
+	#endif
 
 	uint64_t test_virt = 0x0000700000000000ULL;  // Canonical user space
 	uint64_t test_phys = pmm_alloc_page();	
 
 	if (test_phys) {
+	    #ifdef DEBUG
 	    printf("PAGING Test: Mapping 0x%lx -> 0x%lx\n", test_virt, test_phys);
+	    #endif
 	
 	    if (paging_map_page(test_virt, test_phys, PAGE_PRESENT | PAGE_WRITABLE)) {
+	        #ifdef DEBUG
 	        printf("PAGING Test: Mapping successful\n");
+	        #endif
 		
 	        uint64_t resolved = paging_get_physical(test_virt);
 	        if (resolved == test_phys) {
+	            #ifdef DEBUG
 	            printf("PAGING Test: Address resolution PASSED (0x%lx)\n", resolved);
+	            #endif
 			
 	            // Test virtual memory access
 	            *(uint32_t*)test_virt = 0xCAFEBABE;
 	            if (*(uint32_t*)test_virt == 0xCAFEBABE) {
+	                #ifdef DEBUG
 	                printf("PAGING Test: Virtual memory access PASSED\n");
+	                #endif
 	            } else {
+	                #ifdef DEBUG
 	                printf("PAGING Test: Virtual memory access FAILED\n");
+	                #endif
 	            }
 	        } else {
+	            #ifdef DEBUG
 	            printf("PAGING Test: Address resolution FAILED\n");
+	            #endif
 	        }
 		
 	        paging_unmap_page(test_virt);
 	    } else {
+	        #ifdef DEBUG
 	        printf("PAGING Test: Mapping FAILED\n");
+	        #endif
 	    }
 	
 	    pmm_free_page(test_phys);

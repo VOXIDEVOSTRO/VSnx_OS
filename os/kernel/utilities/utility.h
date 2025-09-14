@@ -6,6 +6,22 @@
 #include "../hal/serial_com/serial.h" // for both serial and VGA text
 #include "../hal/vga/vga_text/vga_text.h"
 #include "strings/strings.h"
+
+/*
+
+
+	DEBUG
+	because here this is a common file
+	And useful for debugging and also optimize
+
+
+*/
+
+
+//#define DEBUG 				/*UNCOMMENT THIS TO SEE EXTRA OUTPUT!*/
+//#define FAT_DEBUG 			/*UNCOMMENT THIS TO SEE EXTRA OUTPUT! for gristle driver*/
+
+
 /*
 	STRUCTURES
 */
@@ -28,7 +44,7 @@ void putchar_output(char c);
 void print_string(const char* str);
 void print_number(uint64_t num, int base, int uppercase);
 void print_signed(int64_t num, int base);
-void print_hex(uint64_t num, int uppercase, int prefix);
+/*UNUSED*/void print_hex(uint64_t num, int uppercase, int prefix);
 int printf(const char* format, ...);
 void set_printf_output(int target) ;
 #endif

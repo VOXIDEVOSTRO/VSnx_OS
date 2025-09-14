@@ -60,7 +60,9 @@ int pci_scan_bus(void) {
                 }
                 
                 if (pci_device_count >= MAX_PCI_DEVICES) {
+                    #ifdef DEBUG
                     printf("PCI: Device limit reached\n");
+                    #endif
                     return pci_device_count;
                 }
                 
@@ -119,12 +121,18 @@ pci_device_t* pci_find_class(uint8_t class_code, uint8_t subclass) {
     Initialize PCI subsystem
 */
 void pci_init(void) {
+    #ifdef DEBUG
     printf("PCI: Initializing PCI subsystem\n");
+    #endif
     
     int device_count = pci_scan_bus();
+    #ifdef DEBUG
     printf("PCI: Found %d devices\n", device_count);
+    #endif
     
+    #ifdef DEBUG
     printf("PCI: Initialization complete\n");
+    #endif
 }
 
 /*
@@ -132,12 +140,13 @@ void pci_init(void) {
 	debugging only
 */
 void pci_print_devices(void) {
+    #ifdef DEBUG
     printf("=== PCI Devices ===\n");
+    #endif
     for (int i = 0; i < pci_device_count; i++) {
         pci_device_t* dev = &pci_devices[i];
-        printf("PCI %02x:%02x.%x - %04x:%04x Class %02x:%02x\n",
-               dev->bus, dev->device, dev->function,
-               dev->vendor_id, dev->device_id,
-               dev->class_code, dev->subclass);
+        #ifdef DEBUG
+        printf("PCI %02x:%02x.%x - %04x:%04x Class %02x:%02x\n", dev->bus, dev->device, dev->function, dev->vendor_id, dev->device_id, dev->class_code, dev->subclass);
+        #endif
     }
 }

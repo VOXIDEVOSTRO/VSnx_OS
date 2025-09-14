@@ -4,6 +4,7 @@
 	Header files
 */
 #include <stdint.h>
+//#define DEBUG /*UNCOMMENT THIS TO SEE EXTRA OUTPUT!*/
 /*
 	Structures
 */

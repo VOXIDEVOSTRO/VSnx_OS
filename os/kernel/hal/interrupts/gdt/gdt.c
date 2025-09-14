@@ -79,14 +79,18 @@ void tss_init(void) {
     tss.rsp0 = 0x200000;  // 2MB kernel stack (i dont remember the stack size)
     tss.iomap_base = sizeof(tss_t);
     
+	#ifdef DEBUG
     printf("TSS: Task State Segment initialized at 0x%lx\n", (uint64_t)&tss);
+	#endif
 }
 
 /*
     SETUP ALL GDT ENTRIES
 */
 void gdt_init(void) {
+	#ifdef DEBUG
     printf("GDT: Initializing Global Descriptor Table...\n");
+	#endif
     
     // TSS needs 2 entries, so we need 7 total entries
     gdt_ptr.limit = (sizeof(gdt_entry_t) * 7) - 1;
@@ -104,8 +108,9 @@ void gdt_init(void) {
 	*/
     tss_init();
     gdt_set_tss_entry(5, (uint64_t)&tss, sizeof(tss_t) - 1, 0x89, 0x00);
-    
+    #ifdef DEBUG
     printf("GDT: Loading GDT and TSS...\n");
+	#endif
     
     /*
 		load the GDT (to CPU?)
@@ -116,6 +121,8 @@ void gdt_init(void) {
 		Load the TSS
 	*/
     __asm__ volatile("ltr %0" : : "r"((uint16_t)TSS_SELECTOR));
-    
+
+    #ifdef DEBUG
     printf("GDT: TSS loaded successfully\n");
+	#endif
 }

@@ -14,13 +14,17 @@ uint32_t next_pid = 1;
 	No spawn egg. LOL i mean spawn the process
 */
 process_t* spawn_process(const char* filename, thread_privilege_t privilege) {
+    #ifdef DEBUG
     printf("PROCESS: Spawning %s (Ring %d)\n", filename, privilege);
+    #endif
 	/*
 		First ELF!
 	*/
     uint64_t entry_point = elf_parse(filename);
     if (entry_point == 0) {
+        #ifdef DEBUG
         printf("PROCESS: Failed to load ELF %s\n", filename);
+        #endif
         return NULL;
     }
 	/*
@@ -28,7 +32,9 @@ process_t* spawn_process(const char* filename, thread_privilege_t privilege) {
 	*/
     process_t* proc = (process_t*)kmalloc(sizeof(process_t));
     if (!proc) {
+        #ifdef DEBUG
         printf("PROCESS: Failed to allocate process structure\n");
+        #endif
         return NULL;
     }
 	/*
@@ -50,7 +56,9 @@ process_t* spawn_process(const char* filename, thread_privilege_t privilege) {
 		validate the thread
 	*/
     if (!proc->main_thread) {
+        #ifdef DEBUG
         printf("PROCESS: Failed to create main thread\n");
+        #endif
         kfree(proc);
         return NULL;
     }
@@ -67,8 +75,9 @@ process_t* spawn_process(const char* filename, thread_privilege_t privilege) {
     /*
 		print out your PID and TID and entry
 	*/
-    printf("PROCESS: Created PID=%d, TID=%d, Entry=0x%lx\n", 
-           proc->pid, proc->main_thread->tid, entry_point);
+    #ifdef DEBUG
+    printf("PROCESS: Created PID=%d, TID=%d, Entry=0x%lx\n", proc->pid, proc->main_thread->tid, entry_point);
+    #endif
     
     return proc;
 }
@@ -78,18 +87,24 @@ process_t* spawn_process(const char* filename, thread_privilege_t privilege) {
 */
 int execute_process(process_t* proc) {
     if (!proc || !proc->main_thread) {
+        #ifdef DEBUG
         printf("PROCESS: Invalid process for execution\n");
+        #endif
         return -1;
     }
     
+    #ifdef DEBUG
     printf("PROCESS: Executing PID=%d\n", proc->pid);
+    #endif
     return thread_execute(proc->main_thread);
 }
 /*
 	SLUATHER THE PROC... Okay i feel sad about this
 */
 int kill_process(uint32_t pid) {
+    #ifdef DEBUG
     printf("PROCESS: Killing PID=%d and all its threads\n", pid);
+    #endif
     /*
 		Now get the threads owned by the process
 	*/
@@ -132,6 +147,8 @@ int kill_process(uint32_t pid) {
         }
     }
     // done!
+    #ifdef DEBUG
     printf("PROCESS: PID=%d terminated (%d threads killed)\n", pid, threads_killed);
+    #endif
     return 0;
 }

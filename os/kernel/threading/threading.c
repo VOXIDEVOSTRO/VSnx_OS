@@ -19,7 +19,9 @@ uint32_t thread_count = 0;
 	INIT the threading! or multithreading if you want that way
 */
 void threading_init(void) {
+    #ifdef DEBUG
     printf("THREADING: Initializing\n");
+    #endif
     
 	/*
 		validate the table
@@ -42,7 +44,9 @@ void threading_init(void) {
     thread_table[0] = kernel_thread;
     thread_count = 1;
     
+    #ifdef DEBUG
     printf("THREADING: Ready SET Go!!!!!\n");
+    #endif
 }
 /*
 	Simple thread creation
@@ -121,7 +125,9 @@ thread_t* thread_create(thread_func_t func, void* arg, thread_privilege_t privil
     }
     
     thread_count++; // +1 TID
+    #ifdef DEBUG
     printf("THREADING: Created TID=%d for PID=%d\n", thread->tid, owner_pid);
+    #endif
     return thread; // TID
 }
 
@@ -135,7 +141,9 @@ int thread_execute(thread_t* thread) {
 	*/
     if (!thread || thread->state != THREAD_READY) return -1;
     
+    #ifdef DEBUG
     printf("THREADING: Executing TID=%d\n", thread->tid);
+    #endif
     
     // Add to ready queue . simple asf
     if (ready_queue == NULL) {
@@ -156,18 +164,24 @@ void thread_exit(void) {
 		Validate and make sure its NOT the kernel OR CHAOS
 	*/
     if (!current_thread) {
+        #ifdef DEBUG
         printf("THREADING: No current thread to exit\n");
+        #endif
         return;
     }
     /*
 		In case if a kernel is calling? i have no idea would it?
 	*/
     if (current_thread->tid == 0) {
+        #ifdef DEBUG
         printf("THREADING: Cannot exit kernel thread\n");
+        #endif
         return;
     }
     
+    #ifdef DEBUG
     printf("THREADING: TID=%d exiting\n", current_thread->tid);
+    #endif
     
     thread_t* exiting_thread = current_thread;
     current_thread->state = THREAD_TERMINATED;
@@ -181,7 +195,9 @@ void thread_exit(void) {
 		free thread
 	*/
     
+    #ifdef DEBUG
     printf("THREADING: Thread exit cleanup complete\n");
+    #endif
 	// No return but still the binary may have a return statment
 }
 
@@ -193,7 +209,9 @@ int thread_terminate(uint32_t tid) {
         to prevent a M of the kernel . validate
     */
     if (tid == 0) {
+        #ifdef DEBUG
         printf("THREADING: Cannot terminate kernel thread (TID=0)\n");
+        #endif
         return -1;
     }
     
@@ -213,17 +231,23 @@ int thread_terminate(uint32_t tid) {
         Thread not found (probably doesnt exists)
     */
     if (!target_thread) {
+        #ifdef DEBUG
         printf("THREADING: TID=%d not found\n", tid);
+        #endif
         return -2;
     }
     
+    #ifdef DEBUG
     printf("THREADING: Terminating TID=%d (PID=%d)\n", target_thread->tid, target_thread->owner_pid);
+    #endif
     
     /*
         Nullify if current
     */
     if (target_thread == current_thread) {
+        #ifdef DEBUG
         printf("THREADING: Terminating current thread, clearing current_thread\n");
+        #endif
         current_thread->state = THREAD_TERMINATED;
     }
     
@@ -237,7 +261,9 @@ int thread_terminate(uint32_t tid) {
     */
     kfree(target_thread);
     
+    #ifdef DEBUG
     printf("THREADING: TID=%d terminated successfully\n", tid);
+    #endif
     return 0;
 }
 /*
@@ -294,7 +320,9 @@ thread_state_t thread_get_state(uint32_t tid) {
 void clean_up(thread_t* thread) {
     if (!thread) return;
     
+    #ifdef DEBUG
     printf("THREADING: Cleaning up resources for TID=%d\n", thread->tid);
+    #endif
 
 	/*
 		MOST important fix:

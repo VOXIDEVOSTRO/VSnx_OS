@@ -13,7 +13,9 @@ vmm_info_t vmm_info = {0};
     Initialize VMM
 */
 void vmm_init(void) {
+    #ifdef DEBUG
     printf("VMM: User Virtual Memory Manager\n");
+    #endif
     
 	/*
 		init the stuff
@@ -23,8 +25,12 @@ void vmm_init(void) {
     vmm_info.total_allocated = 0;
     vmm_info.total_free = 0;
     
+    #ifdef DEBUG
     printf("VMM: User heap 0x%lx - 0x%lx\n", USER_HEAP_START, USER_HEAP_END);
+    #endif
+    #ifdef DEBUG
     printf("VMM: Ready for ring 3 access\n");
+    #endif
 }
 
 /*
@@ -32,11 +38,21 @@ void vmm_init(void) {
 	TO BE REMOVED but nice to have
 */
 void vmm_print_info(void) {
+    #ifdef DEBUG
     printf("=== VMM User Memory Info ===\n");
+    #endif
+    #ifdef DEBUG
     printf("Heap range: 0x%lx - 0x%lx\n", USER_HEAP_START, USER_HEAP_END);
+    #endif
+    #ifdef DEBUG
     printf("Next allocation: 0x%lx\n", vmm_info.next_addr);
+    #endif
+    #ifdef DEBUG
     printf("Total allocated: %lu KB\n", vmm_info.total_allocated / 1024);
+    #endif
+    #ifdef DEBUG
     printf("Total free: %lu KB\n", vmm_info.total_free / 1024);
+    #endif
     /*
 		simple counter
 	*/
@@ -47,5 +63,7 @@ void vmm_print_info(void) {
         if (current->is_free) free_blocks++;
         current = current->next;
     }
+    #ifdef DEBUG
     printf("Memory blocks: %d total, %d free\n", total_blocks, free_blocks);
+    #endif
 }

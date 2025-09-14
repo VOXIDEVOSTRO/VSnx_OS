@@ -31,7 +31,9 @@ int ahci_init(void) {
 	*/
     pci_device_t* ahci_dev = pci_find_class(0x01, 0x06);
     if (!ahci_dev) {
+		#ifdef DEBUG
         printf("AHCI: No AHCI controller found\n");
+		#endif
         return -1;
     }
 
@@ -41,17 +43,22 @@ int ahci_init(void) {
     ahci_ctrl.abar = ahci_dev->bar[5] & 0xFFFFFFF0;
     
     if (ahci_ctrl.abar == 0) {
+		#ifdef DEBUG
         printf("AHCI: Invalid ABAR address\n");
+		#endif
         return -1;
     }
-    
+    #ifdef DEBUG
     printf("AHCI: Controller found at ABAR 0x%x\n", ahci_ctrl.abar);
+	#endif
 
     /*
 		Map the I/O or MMIO for ABAR
 	*/
     if (paging_map_page(ahci_ctrl.abar, ahci_ctrl.abar, PAGE_PRESENT | PAGE_WRITABLE) == 0) {
+		#ifdef DEBUG
         printf("AHCI: Failed to map MMIO region\n");
+		#endif
         return -1;
     }
 
@@ -66,7 +73,9 @@ int ahci_init(void) {
 		Get da ports
 	*/
     ahci_ctrl.ports_impl = ahci_read_reg(ahci_ctrl.abar, AHCI_GHC_PI);
+	#ifdef DEBUG
     printf("AHCI: Ports implemented: 0x%x\n", ahci_ctrl.ports_impl);
+	#endif
 
     /*
 		Init the ports
@@ -79,8 +88,9 @@ int ahci_init(void) {
             }
         }
     }
-
+	#ifdef DEBUG
     printf("AHCI: Initialized %d ports\n", ahci_ctrl.port_count);
+	#endif
     return 0; // Done!
 }
 
@@ -124,7 +134,9 @@ int ahci_port_init(ahci_controller_t* ctrl, uint8_t port_num) {
     port->cmd_table = (ahci_cmd_table_t*)kmalloc(256);
 
     if (!port->cmd_list || !port->fis_base || !port->cmd_table) {
+		#ifdef DEBUG
         printf("AHCI: Failed to allocate memory for port %d\n", port_num);
+		#endif
         return -1;
     }
 
@@ -168,7 +180,9 @@ int ahci_port_init(ahci_controller_t* ctrl, uint8_t port_num) {
     cmd |= (1 << 0); // ST
     ahci_write_reg(port_base, AHCI_PORT_CMD, cmd);
 
+	#ifdef DEBUG
     printf("AHCI: Port %d initialized\n", port_num);
+	#endif
     return 0; // DONE
 }
 /*
@@ -188,13 +202,17 @@ static int ahci_exec_cmd(ahci_port_t* port, uint8_t cmd_slot) {
 			check if ERRO
 		*/
         if (ahci_read_reg(port_base, AHCI_PORT_IS) & (1 << 30)) {
+			#ifdef DEBUG
             printf("AHCI: Command error\n");
+			#endif
             return -1;
         }
     }
     
     if (timeout <= 0) {
+		#ifdef DEBUG
         printf("AHCI: Command timeout\n");
+		#endif
         return -1;
     }
     

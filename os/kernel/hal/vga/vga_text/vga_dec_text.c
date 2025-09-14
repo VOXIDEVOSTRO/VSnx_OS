@@ -17,7 +17,9 @@ int vga_dec_text(void) {
 		Verify the write
 	*/
     if (vga_mem[0] != 0x4141) {
+        #ifdef DEBUG
         serial_print(COM1_PORT, "VGA_TEXT: Memory test failed\r\n");
+        #endif
         return 0; // ERROR
     }
     /*
@@ -34,7 +36,9 @@ int vga_dec_text(void) {
 	*/
     outb(VGA_CRTC_DATA, 0x55);
     if (inb(VGA_CRTC_DATA) != 0x55) {
+        #ifdef DEBUG
         serial_print(COM1_PORT, "VGA_TEXT: CRTC test failed\r\n");
+        #endif
         return 0; // failure
     }
     /*
@@ -46,12 +50,16 @@ int vga_dec_text(void) {
 	*/
     uint8_t status = inb(VGA_STATUS_REG);
     if (status == 0xFF) {
+        #ifdef DEBUG
         serial_print(COM1_PORT, "VGA_TEXT: Status register invalid\r\n");
+        #endif
         return 0;
     }
     /*
 		WE HAVE VGA TEXT MODE
 	*/
+    #ifdef DEBUG
     serial_print(COM1_PORT, "VGA_TEXT: Detection successful\r\n");
+    #endif
     return 1; // VGA text mode available
 }

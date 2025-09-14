@@ -71,7 +71,9 @@ int is_address_available(uint64_t addr) {
 	INIT THE Physical memory manager
 */
 void pmm_init(void) {
+    #ifdef DEBUG
     printf("PMM: on-demand memory manager\n");
+    #endif
     
 	/*
 		The multiboot2 tag is giving and we are storing it in the struct. 
@@ -79,7 +81,9 @@ void pmm_init(void) {
 	*/
     vsnx_memory_map_t* mmap = get_vsnx_memory_map();
     if (!mmap || mmap->region_count == 0) {
+        #ifdef DEBUG
         printf("PMM: ERROR - No memory map\n");
+        #endif
         return;
     }
     
@@ -103,15 +107,15 @@ void pmm_init(void) {
     pmm_info.bitmap_size = (pmm_info.total_pages + 7) / 8;
     pmm_info.bitmap = (uint8_t*)0x200000;
     pmm_info.next_alloc_hint = 0;
-    
-    printf("PMM: Memory 0x%lx-0x%lx (%lu MB)\n",
-           pmm_info.memory_start, pmm_info.memory_end,
-           (pmm_info.memory_end - pmm_info.memory_start)/(1024*1024));
-    
+    #ifdef DEBUG
+    printf("PMM: Memory 0x%lx-0x%lx (%lu MB)\n", pmm_info.memory_start, pmm_info.memory_end, (pmm_info.memory_end - pmm_info.memory_start)/(1024*1024));
+    #endif
     pmm_info.free_pages = 0;
     pmm_info.used_pages = 0;
     
+    #ifdef DEBUG
     printf("PMM: On-demand initialization complete - NO MASSIVE OPERATIONS\n");
+    #endif
 }
 /*
 	Alloc a page simple asf
@@ -230,15 +234,15 @@ uint64_t pmm_get_free_pages(void) {
 	normal info
 */
 void pmm_print_info(void) {
+    #ifdef DEBUG
     printf("=== PMM Memory Info ===\n");
-    printf("Total pages: %lu (%lu MB)\n", pmm_info.total_pages, 
-           (pmm_info.total_pages * PAGE_SIZE) / (1024 * 1024));
-    printf("Free pages: %lu (%lu MB)\n", pmm_info.free_pages,
-           (pmm_info.free_pages * PAGE_SIZE) / (1024 * 1024));
-    printf("Used pages: %lu (%lu MB)\n", pmm_info.used_pages,
-           (pmm_info.used_pages * PAGE_SIZE) / (1024 * 1024));
+    printf("Total pages: %lu (%lu MB)\n", pmm_info.total_pages, (pmm_info.total_pages * PAGE_SIZE) / (1024 * 1024));
+    printf("Free pages: %lu (%lu MB)\n", pmm_info.free_pages, (pmm_info.free_pages * PAGE_SIZE) / (1024 * 1024));
+    printf("Used pages: %lu (%lu MB)\n", pmm_info.used_pages, (pmm_info.used_pages * PAGE_SIZE) / (1024 * 1024));
+	#endif
     if (pmm_info.total_pages > 0) {
-        printf("Memory utilization: %lu%%\n", 
-               (pmm_info.used_pages * 100) / pmm_info.total_pages);
+		#ifdef DEBUG
+        printf("Memory utilization: %lu%%\n", (pmm_info.used_pages * 100) / pmm_info.total_pages);
+		#endif
     }
 }

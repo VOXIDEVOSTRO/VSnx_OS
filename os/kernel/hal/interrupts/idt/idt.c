@@ -56,14 +56,18 @@ void pic_init(void) {
     outb(0x21, 0xFE);  // Enable IRQ0 (timer)
     outb(0xA1, 0xFF);
     
+	#ifdef DEBUG
     printf("PIC: Programmable Interrupt Controller initialized\n");
+	#endif
 }
 
 /*
     IDT Initialization
 */
 void idt_init(void) {
+	#ifdef DEBUG
     printf("IDT: Initializing Interrupt Descriptor Table...\n");
+	#endif
     
     idt_ptr.limit = sizeof(idt_entries) - 1;
     idt_ptr.base = (uint64_t)&idt_entries;
@@ -122,8 +126,10 @@ void idt_init(void) {
     // Enable interrupts
     __asm__ volatile("sti");
     
+	#ifdef DEBUG
     printf("IDT: Interrupt Descriptor Table initialized\n");
     printf("IDT: Interrupts enabled\n");
+	#endif
 }
 
 // Exception name table for debugging

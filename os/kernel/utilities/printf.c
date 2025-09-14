@@ -3,6 +3,10 @@
 */
 #include "utility.h"
 /*
+	DEFINE DEBUG:
+	This is for extra ouput which uses the printf for debugging here.
+*/
+/*
 	Declare globals HERE
 */
 output_target_t current_output = OUTPUT_BOTH;

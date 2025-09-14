@@ -5,6 +5,7 @@
 	probably some complex shi here
 */
 #include <stdint.h>
+
 /*
 	Register offsets
 */
