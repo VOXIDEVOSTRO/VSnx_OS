@@ -9,7 +9,7 @@
     PCI Configuration Space Registers
 */
 #define PCI_CONFIG_ADDRESS  0xCF8
-#define PCI_CONFIG_DATA     0xCFC
+#define PCI_CONFIG_DATA     0xCFC // this was wrong. i used the 0xCF8 and caused choas
 
 /*
     PCI Header Fields
@@ -57,11 +57,11 @@ typedef struct {
     uint8_t class_code;
     uint8_t subclass;
     uint8_t prog_if;
-    uint32_t bar[6];
+    uint32_t bar[6]; // there are 6 bars
 } pci_device_t;
 
 /*
-    PCI Functions
+    prototypes
 */
 void pci_init(void);
 uint32_t pci_config_read(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
@@ -72,5 +72,4 @@ int pci_scan_bus(void);
 pci_device_t* pci_find_device(uint16_t vendor_id, uint16_t device_id);
 pci_device_t* pci_find_class(uint8_t class_code, uint8_t subclass);
 void pci_print_devices(void);
-
 #endif

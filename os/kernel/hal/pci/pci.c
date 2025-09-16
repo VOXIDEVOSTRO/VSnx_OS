@@ -5,9 +5,9 @@
 /*
     PCI Device List
 */
-#define MAX_PCI_DEVICES 256
+#define MAX_PCI_DEVICES 256 // Shouldn't be unlimted?
 static pci_device_t pci_devices[MAX_PCI_DEVICES];
-static int pci_device_count = 0;
+static int pci_device_count = 0; // NULL
 
 /*
     Read PCI configuration register
@@ -28,7 +28,7 @@ void pci_config_write(uint8_t bus, uint8_t device, uint8_t function, uint8_t off
 }
 
 /*
-    Read 16-bit PCI configuration register
+    read 16-bit PCI configuration register
 */
 uint16_t pci_config_read16(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset) {
     uint32_t data = pci_config_read(bus, device, function, offset);
@@ -36,7 +36,7 @@ uint16_t pci_config_read16(uint8_t bus, uint8_t device, uint8_t function, uint8_
 }
 
 /*
-    Read 8-bit PCI configuration register
+    read 8-bit PCI configuration register
 */
 uint8_t pci_config_read8(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset) {
     uint32_t data = pci_config_read(bus, device, function, offset);
@@ -44,7 +44,7 @@ uint8_t pci_config_read8(uint8_t bus, uint8_t device, uint8_t function, uint8_t 
 }
 
 /*
-    Scan PCI bus for devices
+    scan PCI bus for device or devices
 */
 int pci_scan_bus(void) {
     pci_device_count = 0;
@@ -55,8 +55,8 @@ int pci_scan_bus(void) {
                 uint16_t vendor_id = pci_config_read16(bus, device, function, PCI_VENDOR_ID);
                 
                 if (vendor_id == 0xFFFF) {
-                    if (function == 0) break; // No device
-                    continue; // No function
+                    if (function == 0) break; /*Nothing*/
+                    continue; /*nothing here either*/
                 }
                 
                 if (pci_device_count >= MAX_PCI_DEVICES) {
@@ -76,7 +76,7 @@ int pci_scan_bus(void) {
                 dev->subclass = pci_config_read8(bus, device, function, PCI_SUBCLASS);
                 dev->prog_if = pci_config_read8(bus, device, function, PCI_PROG_IF);
                 
-                // Read BARs
+                // Read BARs OR SPIT BARS!!!!!!!
                 for (int i = 0; i < 6; i++) {
                     dev->bar[i] = pci_config_read(bus, device, function, PCI_BAR0 + (i * 4));
                 }
@@ -118,14 +118,14 @@ pci_device_t* pci_find_class(uint8_t class_code, uint8_t subclass) {
 }
 
 /*
-    Initialize PCI subsystem
+    Initialize PCI
 */
 void pci_init(void) {
     #ifdef DEBUG
     printf("PCI: Initializing PCI subsystem\n");
     #endif
     
-    int device_count = pci_scan_bus();
+    int device_count = pci_scan_bus(); // thats all we need
     #ifdef DEBUG
     printf("PCI: Found %d devices\n", device_count);
     #endif
@@ -137,7 +137,7 @@ void pci_init(void) {
 
 /*
     Print all PCI devices
-	debugging only
+	debugging only. slightly useful
 */
 void pci_print_devices(void) {
     #ifdef DEBUG

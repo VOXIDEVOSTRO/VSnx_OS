@@ -33,6 +33,14 @@
 */
 #include "hal/io/disk/disk.h"
 /*
+	And the Keyboard (ps2)
+*/
+#include "hal/io/ps2/ps2.h"
+/*
+	Some hook stuff
+*/
+#include "driver/hookcall/hookcall.h"
+/*
 	Our own printf and its friends like string operations and stuff
 */
 #include "utilities/utility.h"
@@ -55,6 +63,14 @@
 */
 #include "syscalls/syscall.h"
 /*
+	Some drivers
+*/
+#include "hal/vga/vga_gfx/vga_gfx.h"
+/*
+	Some GFX driver functions
+*/
+#include "driver/hookregistry/graphics/gfx.h"
+/*
 	MAIN KERNEL ENTRY POINT
 	The starting point of the kernel
 */
@@ -65,7 +81,7 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		here SO we have an idea what code
 		destroyed itself or kernel
 	*/
-	#ifdef DEBUG
+	#ifdef DEBUG // just to avoid clutter. to change this: go to the utilities header file
     serial_init(COM1_PORT);
     serial_print(COM1_PORT, "VSnx Kernel Starting...\r\n"); // Simplest possible
 	#endif
@@ -135,14 +151,184 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 	*/
 	idt_init();
 	/*
+		NOW init the keyboard or PS2
+	*/
+	/*
+		PS/2
+	*/
+	#ifdef DEBUG
+	printf("VSnx: Detecting PS/2 devices...\n");
+	#endif
+	/*
+		INIT some vars
+	*/
+	ps2_controller.dual_channel = false;
+	ps2_controller.port1_exists = false;
+	ps2_controller.port2_exists = false;
+	ps2_controller.port1_device = PS2_DEVICE_NONE;
+	ps2_controller.port2_device = PS2_DEVICE_NONE;
+	ps2_controller.initialized = false;
+	/*
+		FIRST disable
+	*/
+	ps2_write_command(PS2_CMD_DISABLE_PORT1);
+	ps2_write_command(PS2_CMD_DISABLE_PORT2);
+
+	/*
+		FLUSH (not the toilet)
+	*/
+	while (inb(PS2_STATUS_PORT) & PS2_STATUS_OUTPUT_FULL) {
+	    inb(PS2_DATA_PORT);
+	}
+
+	/*
+		Set the configuration
+	*/
+	ps2_write_command(PS2_CMD_READ_CONFIG);
+	uint8_t config = ps2_read_data();
+	ps2_controller.config_byte = config;
+	#ifdef DEBUG
+	printf("VSnx: PS/2 original config: 0x%02X\n", config);
+	#endif
+	/*
+		Check if dual
+	*/
+	ps2_controller.dual_channel = (config & PS2_CONFIG_PORT2_CLOCK) != 0;
+
+	config &= ~(PS2_CONFIG_PORT1_INT | PS2_CONFIG_PORT2_INT | PS2_CONFIG_PORT1_TRANS);
+	ps2_write_command(PS2_CMD_WRITE_CONFIG);
+	ps2_write_data(config);
+	/*
+		do a self test
+	*/
+	ps2_write_command(PS2_CMD_TEST_CONTROLLER);
+	uint8_t test_result = ps2_read_data();
+
+	if (test_result != 0x55) {
+		#ifdef DEBUG
+	    printf("VSnx: PS/2 controller self-test failed: 0x%02X\n", test_result);
+		#endif
+	} else {
+		#ifdef DEBUG
+	    printf("VSnx: PS/2 controller self-test passed\n");
+		#endif
+		/*
+			test ports
+		*/
+	    ps2_write_command(PS2_CMD_TEST_PORT1);
+	    test_result = ps2_read_data();
+	    ps2_controller.port1_exists = (test_result == 0x00);
+		#ifdef DEBUG
+	    printf("VSnx: PS/2 Port 1 test: 0x%02X (%s)\n", test_result, 
+	           ps2_controller.port1_exists ? "OK" : "FAIL");
+		#endif
+		/*
+			IF dual channel. Enable
+		*/
+	    if (ps2_controller.dual_channel) {
+	        ps2_write_command(PS2_CMD_TEST_PORT2);
+	        test_result = ps2_read_data();
+	        ps2_controller.port2_exists = (test_result == 0x00);
+			#ifdef DEBUG
+	        printf("VSnx: PS/2 Port 2 test: 0x%02X (%s)\n", test_result,
+	               ps2_controller.port2_exists ? "OK" : "FAIL");
+			#endif
+		}
+		/*
+			IDENTIFY
+		*/
+	    if (ps2_controller.port1_exists) {
+	        ps2_write_command(PS2_CMD_ENABLE_PORT1);
+			/*
+				Check the device on 1
+			*/
+	        ps2_controller.port1_device = ps2_identify_device(1);
+		
+	        if (ps2_controller.port1_device == PS2_DEVICE_KEYBOARD_OLD ||
+	            ps2_controller.port1_device == PS2_DEVICE_KEYBOARD_MF2) {
+				#ifdef DEBUG
+	            printf("VSnx: Keyboard detected on port 1, initializing...\n");
+				#endif
+	            /*
+					FINALLY init the keyboard
+				*/
+	            ps2_keyboard_init(1);
+				#ifdef DEBUG
+	            printf("VSnx: Keyboard ready for input\n");
+				#endif
+	        } else {
+				#ifdef DEBUG
+	            printf("VSnx: No keyboard on port 1 (device type: %d)\n", ps2_controller.port1_device);
+				#endif
+	        }
+	    }
+		/*
+			ALSO check the 2
+		*/
+	    if (ps2_controller.port2_exists) {
+	        ps2_write_command(PS2_CMD_ENABLE_PORT2);
+			/*
+				IDENTITFY
+			*/
+	        ps2_controller.port2_device = ps2_identify_device(2);
+			/*
+				To be FIXED or added:
+				Add mouse init here
+			*/
+	        if (ps2_controller.port2_device >= PS2_DEVICE_MOUSE_STANDARD) {
+				#ifdef DEBUG
+	            printf("VSnx: Mouse detected on port 2\n");
+				#endif
+	        } else {
+				#ifdef DEBUG
+	            printf("VSnx: No mouse on port 2 (device type: %d)\n", ps2_controller.port2_device);
+				#endif
+	        }
+	    }
+		/*
+			Enable hardware interrupts for them
+		*/
+	    ps2_write_command(PS2_CMD_READ_CONFIG);
+	    config = ps2_read_data();
+	
+	    if (ps2_controller.port1_exists && 
+	        (ps2_controller.port1_device == PS2_DEVICE_KEYBOARD_OLD ||
+	         ps2_controller.port1_device == PS2_DEVICE_KEYBOARD_MF2)) {
+	        config |= PS2_CONFIG_PORT1_INT;
+			#ifdef DEBUG
+	        printf("VSnx: Enabled keyboard interrupts (IRQ1)\n");
+			#endif
+	    }
+	
+	    if (ps2_controller.port2_exists && 
+	        ps2_controller.port2_device >= PS2_DEVICE_MOUSE_STANDARD) {
+	        config |= PS2_CONFIG_PORT2_INT;
+			#ifdef DEBUG
+	        printf("VSnx: Enabled mouse interrupts (IRQ12)\n");
+			#endif
+	    }
+		/*
+			we are done
+		*/
+	    ps2_write_command(PS2_CMD_WRITE_CONFIG);
+	    ps2_write_data(config);
+	
+	    ps2_controller.initialized = true;
+		#ifdef DEBUG
+	    printf("VSnx: PS/2 initialization complete\n");
+	    printf("VSnx: Port 1 device: %d, Port 2 device: %d\n", 
+	           ps2_controller.port1_device, ps2_controller.port2_device);
+		#endif
+	}
+	#ifdef DEBUG
+	printf("VSnx: Initializing Physical Memory Manager...\n");
+	#endif
+	/*
 		Now the star of the show. the PMM (Physical memory manager)
 		And what i say is kernel memory. becuase kernel has the most
 		acsess to it. its a fairly simple and also VMM is based on top
 		of the PMM and dependent.
 	*/
-	#ifdef DEBUG
-	printf("VSnx: Initializing Physical Memory Manager...\n");
-	#endif
 	pmm_init();
 	/*
 		print the random statistics. (probably spelled it wrong)
@@ -282,89 +468,30 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 	#endif
 	threading_init();
 	/*
-		just after it... THE SYSCALLS. standard of communication between kernel and thread for some
+		just after it... THE SYSCALLS. standard of communication between kernel and thread/process for some
 		previlaged acsess (probably spelled it wrong)
 	*/
 	init_syscalls();
+	init_hookcalls();
 	/*
-		Some testing shi here... just ignore
+		THEN first try to check for a VGA graphics
+		Both modes are supported: 13h and 12h
 	*/
-	process_t* test_proc = spawn_process("MODULES/APPS/TEST.ELF"/*TESTING but HELLO WORLD from userspace*/, THREAD_RING3);
-	process_t* test1_proc = spawn_process("MODULES/APPS/TEST1.ELF"/*TESTING but syscalls and exit*/, THREAD_RING3);
-	process_t* test2_proc = spawn_process("MODULES/APPS/TEST2.ELF"/*testing the schedular*/, THREAD_RING3);
-	if (test_proc) {
-	    #ifdef DEBUG
-	    printf("PROCESS: Successfully created process\n");
-	    #endif
-		/*
-			execute the process DUH...
-		*/
-	    if (execute_process(test_proc) == 0) {
-	        #ifdef DEBUG
-	        printf("PROCESS: Process started successfully\n");
-	        #endif
-	    } else {
-	        #ifdef DEBUG
-	        printf("PROCESS: Failed to start process\n");
-	        #endif
-	    }
-	} else {
-	    #ifdef DEBUG
-	    printf("PROCESS: Failed to spawn process\n");
-	    #endif
-	}
-	if (test1_proc) {
-	    #ifdef DEBUG
-	    printf("PROCESS: Successfully created process\n");
-	    #endif
-		/*
-			execute the process DUH...
-		*/
-	    if (execute_process(test1_proc) == 0) {
-	        #ifdef DEBUG
-	        printf("PROCESS: Process started successfully\n");
-	        #endif
-	    } else {
-	        #ifdef DEBUG
-	        printf("PROCESS: Failed to start process\n");
-	        #endif
-	    }
-	} else {
-	    #ifdef DEBUG
-	    printf("PROCESS: Failed to spawn process\n");
-	    #endif
-	}
-	if (test2_proc) {
-	    #ifdef DEBUG
-	    printf("PROCESS: Successfully created process\n");
-	    #endif
-		/*
-			execute the process DUH...
-		*/
-	    if (execute_process(test2_proc) == 0) {
-	        #ifdef DEBUG
-	        printf("PROCESS: Process started successfully\n");
-	        #endif
-	    } else {
-	        #ifdef DEBUG
-	        printf("PROCESS: Failed to start process\n");
-	        #endif
-	    }
-	} else {
-	    #ifdef DEBUG
-	    printf("PROCESS: Failed to spawn process\n");
-	    #endif
-	}
-
+	vga_load_graphics_driver(/*Load some drivers, In this case its VGA*/);
 	#ifdef DEBUG
 	printf("VSnx: Done\n");
 	#endif
-	
-    // Kernel idling
-    while (1) {
+    while (1) { /*main idle*/
 		/*
 			Void of a loop
 		*/
+		/*
+			ALSo here is demostration of the drivers and thier interfaces
+		*/
+		gfx_fill_rect(20,  20,  80, 60, 4);   
+        gfx_fill_rect(120, 20,  80, 60, 2);
+        gfx_fill_rect(220, 20,  80, 60, 1); 
+        gfx_fill_rect(100, 100, 120, 80, 15);
         __asm__ volatile("hlt"); // wait for interrupt
     }
 }

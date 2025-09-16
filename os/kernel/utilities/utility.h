@@ -44,7 +44,7 @@ void putchar_output(char c);
 void print_string(const char* str);
 void print_number(uint64_t num, int base, int uppercase);
 void print_signed(int64_t num, int base);
-/*UNUSED*/void print_hex(uint64_t num, int uppercase, int prefix);
+/*UNUSED*/ //void print_hex(uint64_t num, int uppercase, int prefix);
 int printf(const char* format, ...);
 void set_printf_output(int target) ;
 #endif

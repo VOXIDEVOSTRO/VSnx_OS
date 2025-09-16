@@ -3,6 +3,7 @@
 */
 #include "interrupts.h"
 #include "../../threading/thread.h"
+#include "../io/ps2/ps2.h"
 /*
     IRQ Handler - Hardware interrupt handling
 */
@@ -36,7 +37,8 @@ void irq_handler(interrupt_frame_t* frame) {
 			*/
 			scheduler_tick(frame);
             break;
-        case 1:  // Keyboard - just return for now cuz yea
+        case 1:
+            ps2_keyboard_interrupt_handler(frame);
             break;
         default:
             break;
