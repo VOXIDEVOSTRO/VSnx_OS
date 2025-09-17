@@ -40,10 +40,25 @@ int64_t thread_create_handler(uint64_t func_ptr, uint64_t arg_ptr, uint64_t priv
 int64_t thread_execute_handler(uint64_t tid_arg, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 int64_t thread_exit_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 int64_t thread_terminate_handler(uint64_t tid_arg, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
+int64_t thread_block_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
+int64_t thread_unblock_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 /*
 	Process
 */
 int64_t spawn_process_handler(uint64_t filename_ptr, uint64_t privilege_arg, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 int64_t execute_process_handler(uint64_t pid_arg, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 int64_t kill_process_handler(uint64_t pid_arg, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
+/*
+	IPC Pipes
+*/
+int64_t makepipe_handler(uint64_t name_ptr, uint64_t func_ptr, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
+int64_t getpipe_handler(uint64_t name_ptr, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
+/*
+	SYSTEM time
+*/
+int64_t time_now_ms_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
+int64_t uptime_seconds_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
+int64_t uptime_minutes_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
+int64_t time_after_handler(uint64_t a, uint64_t b, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
+int64_t time_before_handler(uint64_t a, uint64_t b, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 #endif

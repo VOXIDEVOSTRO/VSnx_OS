@@ -6,6 +6,7 @@
 /*
 	Main string functions
 	adding all manual stuff
+	THIS IS ONLY FOR THE KERNEL!
 */
 int strlen(const char* str) {
     int len = 0;

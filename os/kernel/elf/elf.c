@@ -25,7 +25,7 @@ uint64_t elf_parse(const char* filename) {
 		Read the header
 	*/
     elf64_hdr_t elf_hdr;
-    if (fat_read(fd, &elf_hdr, sizeof(elf_hdr), &rerrno) != sizeof(elf_hdr)) {
+    if (fat_read(fd, &elf_hdr, sizeof(elf_hdr)/*Told ya*/, &rerrno) != sizeof(elf_hdr)) {
         #ifdef DEBUG
         printf("ELF: Failed to read header\n");
         #endif
@@ -186,4 +186,7 @@ uint64_t elf_load_segment(elf64_phdr_t* phdr, int fd, uint64_t elf_entry) {
     }
     
     return 1;  // Success but no entry point in this segment
+	/*
+		This will be loop called for all segments
+	*/
 }

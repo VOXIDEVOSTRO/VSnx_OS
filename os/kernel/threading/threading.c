@@ -6,6 +6,7 @@
 #include "../utilities/utility.h"
 #include "../hal/mem/k_mem/k_mem.h"
 #include "../hal/mem/u_mem/u_mem.h"
+#include "../systemclock/clock.h"
 /*
 	Globals
 	declaring here
@@ -369,3 +370,89 @@ void clean_up(thread_t* thread) {
     
     thread_count--; // -1
 } 
+/*
+	Some block and unblock functions
+*/
+int thread_block(void) {
+	/*
+		Check CT
+	*/
+    if (!current_thread) {
+        #ifdef DEBUG
+        printf("THREADING: ERROR - No current thread to block\n");
+        #endif
+        return -1;
+    }
+	/*
+		Check TID
+	*/
+    if (current_thread->tid == 0) {
+        #ifdef DEBUG
+        printf("THREADING: ERROR - Cannot block kernel thread (TID=0)\n");
+        #endif
+        return -1;
+    }
+	/*
+		Make sure NOT mid CPU
+	*/
+    if (current_thread->state != THREAD_RUNNING) {
+        #ifdef DEBUG
+        printf("THREADING: WARNING - Blocking non-running thread TID=%d\n", current_thread->tid);
+        #endif
+    }
+	/*
+		Finally block
+	*/
+    current_thread->state = THREAD_BLOCKED;
+
+    #ifdef DEBUG
+    printf("THREADING: Blocking TID=%d\n", current_thread->tid);
+    #endif
+	/*
+		Also no need to be in the ready queue
+	*/
+    remove_from_ready_queue(current_thread);
+	/*
+		call the scheduler
+	*/
+    __asm__ volatile("int $0x20");
+
+    return 0;
+}
+
+int thread_unblock(void) {
+    uint32_t tid = gettid();
+    thread_t* thread = thread_get_by_tid(tid);
+    if (!thread) {
+        #ifdef DEBUG
+        printf("THREADING: ERROR - Cannot unblock NULL thread\n");
+        #endif
+        return -1;
+    }
+
+    if (thread->state != THREAD_BLOCKED) {
+        #ifdef DEBUG
+        printf("THREADING: ERROR - Thread TID=%d is not blocked\n", thread->tid);
+        #endif
+        return -2;
+    }
+
+    #ifdef DEBUG
+    printf("THREADING: I/O Unblocking TID=%d\n", thread->tid);
+    #endif
+
+    thread->state = THREAD_READY;
+
+    // Add to ready queue
+    if (ready_queue == NULL) {
+        ready_queue = thread;
+        thread->next = NULL;
+    } else {
+        thread_t* last = ready_queue;
+        while (last->next) last = last->next;
+        last->next = thread;
+        thread->next = NULL;
+    }
+
+    return 0;
+}

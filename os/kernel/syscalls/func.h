@@ -3,7 +3,64 @@
 	Also as always: HEADER FILES!
 */
 #include "syscall.h"
+#include "../ipc/ipc.h"
 #include <stdbool.h>
+/*
+	prototypes
+	Because of the compiler...
+*/
+/* ---- Print / Debug ---- */
+static inline int print(const char *fmt, ...);
+
+/* ---- Filesystem ---- */
+static inline int open(const char *filename, int flags, int mode);
+static inline int close(int fd);
+static inline int read(int fd, void *buffer, size_t count);
+static inline int write(int fd, const void *buffer, size_t count);
+static inline int lseek(int fd, int offset, int whence);
+static inline int mkdir(const char *path, int mode);
+static inline int unlink(const char *path);
+
+/* ---- Memory management PMM and VMM ---- */
+static inline void* umalloc(size_t size);
+static inline void  ufree(void* ptr);
+static inline void* urealloc(void* ptr, size_t new_size);
+static inline void* ucalloc(size_t num, size_t size);
+
+/* ---- Process / Thread info ---- */
+static inline int   getpid(void);
+static inline int   gettid(void);
+static inline void* get_by_tid(uint32_t tid);
+static inline bool  thread_exists(uint32_t tid);
+static inline int   get_state(uint32_t tid);
+
+/* ---- Multithreading or THREADING matters on you ---- */
+static inline int  t_create(void* entry, void* arg, int privilege, int priority, int owner_pid);
+static inline int  t_execute(uint32_t tid);
+static inline void t_exit(void);
+static inline int  t_terminate(uint32_t tid);
+
+/* ---- Spinlock / Sleep simple sleep ---- */
+static inline void cpu_relax(void);
+static inline void t_sleep(uint32_t milliseconds);
+static inline int  t_block(void);
+static inline int  t_unblock(void);
+
+/* ---- Process/proc management ---- */
+static inline int spawn_proc(const char* filename, int privilege);
+static inline int execute_proc(int pid);
+static inline int kill_proc(int pid);
+
+/* ---- Pipes/IPC ---- */
+static inline int    createpipe(const char* name, pipe_t func);
+static inline pipe_t retrievepipe(const char* name);
+
+/* ---- System time ---- */
+static inline uint64_t uptime_milli(void);
+static inline uint32_t uptime_sec(void);
+static inline uint32_t uptime_min(void);
+static inline int      time_aft(uint64_t a, uint64_t b);
+static inline int      time_bef(uint64_t a, uint64_t b);
 /*
 	Print/Debug function for Ring 3 processes
 */
@@ -118,6 +175,42 @@ static inline int t_terminate(uint32_t tid) {
 }
 
 /*
+	Simple CPU spinlock or relax?
+*/
+static inline void cpu_relax(void) {
+#if defined(__x86_64__) || defined(__i386__)
+    __asm__ volatile("pause");
+#elif defined(__aarch64__) || defined(__arm__)
+    __asm__ volatile("yield");
+#endif
+}
+
+/* Busy-wait sleep using uptime_milli() syscall */
+static inline void t_sleep(uint32_t milliseconds) {
+    if (milliseconds == 0) return;
+	/*
+		Use our timers
+	*/
+    uint64_t start  = uptime_milli();
+    uint64_t target = start + (uint64_t)milliseconds;
+	/*
+		Wait
+	*/
+    while (time_bef(uptime_milli(), target)) {
+        cpu_relax();
+    }
+}
+
+
+static inline int t_block(void) {
+    return syscall(28, 0, 0, 0, 0, 0, 0);
+}
+
+static inline int t_unblock(void) {
+    return syscall(29, 0, 0, 0, 0, 0, 0);
+}
+
+/*
 	proc/process
 */
 
@@ -131,4 +224,40 @@ static inline int execute_proc(int pid) {
 
 static inline int kill_proc(int pid) {
     return (int)syscall(24, (uint64_t)pid, 0, 0, 0, 0, 0);
+}
+
+/*
+	Pipes function
+*/
+
+static inline int createpipe(const char* name, pipe_t func) {
+    return (int)syscall(25, (uint64_t)name, (uint64_t)func, 0, 0, 0, 0);
+}
+
+static inline pipe_t retrievepipe(const char* name) {
+    return (pipe_t)syscall(26, (uint64_t)name, 0, 0, 0, 0, 0);
+}
+
+/*
+	System time functions
+*/
+
+static inline uint64_t uptime_milli(void) {
+    return (uint64_t)syscall(30, 0,0,0,0,0,0);
+}
+
+static inline uint32_t uptime_sec(void) {
+    return (uint32_t)syscall(31, 0,0,0,0,0,0);
+}
+
+static inline uint32_t uptime_min(void) {
+    return (uint32_t)syscall(32, 0,0,0,0,0,0);
+}
+
+static inline int time_aft(uint64_t a, uint64_t b) {
+    return (int)syscall(33, a, b, 0,0,0,0);
+}
+
+static inline int time_bef(uint64_t a, uint64_t b) {
+    return (int)syscall(34, a, b, 0,0,0,0);
 }

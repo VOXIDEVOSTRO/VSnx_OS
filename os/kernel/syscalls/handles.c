@@ -7,7 +7,8 @@
 #include "../elf/process.h"
 #include "../fat32/gristle.h" // For fat32
 #include "../hal/mem/u_mem/u_mem.h" // For memory
-
+#include "../ipc/ipc.h"
+#include "../systemclock/clock.h"
 /*
     PRINTF SYSCALL HANDLER
 	For DEBUG use only LOL
@@ -222,6 +223,17 @@ int64_t thread_terminate_handler(uint64_t tid_arg, uint64_t unused2, uint64_t un
     return (int64_t)rc;
 }
 
+int64_t thread_block_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6) {
+    return thread_block();
+}
+
+int64_t thread_unblock_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6) {
+    /*
+		I GUESS WE DONT need this
+	*/
+	return thread_unblock();
+}
+
 /*
 	Process
 */
@@ -277,3 +289,73 @@ int64_t kill_process_handler(uint64_t pid_arg, uint64_t unused2, uint64_t unused
     uint32_t pid = (uint32_t)pid_arg;
     return (int64_t)kill_process(pid);
 }
+
+/*
+
+	PIPES or IPC
+
+*/
+
+int64_t makepipe_handler(uint64_t name_ptr, uint64_t func_ptr, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6)
+{
+    (void)unused3; (void)unused4; (void)unused5; (void)unused6;
+
+    const char* name = (const char*)name_ptr;
+    pipe_t func = (pipe_t)func_ptr;
+
+    makepipe(name, func);
+    return 0;
+}
+
+int64_t getpipe_handler(uint64_t name_ptr, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6)
+{
+    (void)unused2; (void)unused3; (void)unused4; (void)unused5; (void)unused6;
+
+    const char* name = (const char*)name_ptr;
+    pipe_t func = getpipe(name);
+
+    return (int64_t)func;
+}
+
+/*
+	Some SYSTEM time functions
+*/
+
+int64_t time_now_ms_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6)
+{
+    (void)unused1; (void)unused2; (void)unused3;
+    (void)unused4; (void)unused5; (void)unused6;
+
+    return (int64_t)time_now_ms();
+}
+
+int64_t uptime_seconds_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6)
+{
+    (void)unused1; (void)unused2; (void)unused3;
+    (void)unused4; (void)unused5; (void)unused6;
+
+    return (int64_t)uptime_seconds();
+}
+
+int64_t uptime_minutes_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6)
+{
+    (void)unused1; (void)unused2; (void)unused3;
+    (void)unused4; (void)unused5; (void)unused6;
+
+    return (int64_t)uptime_minutes();
+}
+
+int64_t time_after_handler(uint64_t a, uint64_t b, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6)
+{
+    (void)unused3; (void)unused4; (void)unused5; (void)unused6;
+
+    return (int64_t)time_after(a, b);
+}
+
+int64_t time_before_handler(uint64_t a, uint64_t b, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6)
+{
+    (void)unused3; (void)unused4; (void)unused5; (void)unused6;
+
+    return (int64_t)time_before(a, b);
+}
+

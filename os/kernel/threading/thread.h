@@ -5,6 +5,7 @@
 */
 #include <stdint.h>
 #include "../hal/interrupts/idt/idt.h"
+#include "../systemclock/clock.h"
 /*
 	threads structures
 */
@@ -74,6 +75,8 @@ void thread_exit(void);
 uint32_t gettid(void);
 uint32_t getpid(void);
 void clean_up(thread_t* thread);
+int thread_unblock(void);
+int thread_block(void);
 /*
 	Schedular
 */

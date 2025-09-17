@@ -19,7 +19,7 @@ typedef struct {
     uint64_t e_phoff;        // Program header table offset
     uint64_t e_shoff;        // Section header table offset
     uint32_t e_flags;        // Processor-specific flags
-    uint16_t e_ehsize;       // ELF header size
+    uint16_t e_ehsize;       // ELF header size (sizeof elf64_hdr_t???)
     uint16_t e_phentsize;    // Program header entry size
     uint16_t e_phnum;        // Program header entry count
     uint16_t e_shentsize;    // Section header entry size
@@ -33,18 +33,18 @@ typedef struct {
     uint32_t p_type;         // Segment type
     uint32_t p_flags;        // Segment flags
     uint64_t p_offset;       // Segment file offset
-    uint64_t p_vaddr;        // Segment virtual address
-    uint64_t p_paddr;        // Segment physical address
+    uint64_t p_vaddr;        // Segment virtual address (VMM will handle this)
+    uint64_t p_paddr;        // Segment physical address (we using VMM for now)
     uint64_t p_filesz;       // Segment size in file
-    uint64_t p_memsz;        // Segment size in memory
+    uint64_t p_memsz;        // Segment size in memory (important because of elf loader)
     uint64_t p_align;        // Segment alignment
 } __attribute__((packed)) elf64_phdr_t;
 /*
 	Normal constants
 */
-#define ELF_MAGIC    0x464C457F  // "\x7FELF"
+#define ELF_MAGIC    0x464C457F  // "\x7FELF" Which is a standard ELF magic
 #define ET_EXEC      2           // Executable file
-#define EM_X86_64    62          // AMD64/x86-64
+#define EM_X86_64    62          // AMD64/x86-64 (as our OS)
 #define PT_LOAD      1           // Loadable segment
 /*
 	Prototypes

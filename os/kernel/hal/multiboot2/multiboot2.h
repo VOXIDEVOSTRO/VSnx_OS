@@ -10,8 +10,8 @@
 /*
 	magic numbers
 */
-#define MULTIBOOT2_BOOTLOADER_MAGIC 0x36d76289
-#define MULTIBOOT2_HEADER_MAGIC     0xe85250d6
+#define MULTIBOOT2_BOOTLOADER_MAGIC 0x36d76289/*standard magic for multiboot2*/
+#define MULTIBOOT2_HEADER_MAGIC     0xe85250d6/*The main header magic*/
 /*
 	All tag types
 */

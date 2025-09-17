@@ -493,7 +493,7 @@ void _start(void) {
         print("[VGA12H] VGA Mode 12h driver is done");
         while (1) {
 			/*
-				Loop of sucsess
+				Loop of success
 			*/
             __asm__ volatile("nop");
         }
@@ -501,7 +501,7 @@ void _start(void) {
 		/*
 			Failure
 		*/
-        print("[VGA12H] Driver initialization failed!");
+        print("[VGA12H] Driver initialization failed BECAUSE YOU FAILURE");
     }
     while (1) {
 		/*

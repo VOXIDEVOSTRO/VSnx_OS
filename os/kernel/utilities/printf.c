@@ -42,13 +42,15 @@ void print_number_padded(uint64_t num, int base, int uppercase, int width, char 
             num /= base;
         }
     }
-    
-    // Pad to width
+	/*
+		PAD
+	*/
     while (i < width) {
         buffer[i++] = pad;
     }
-    
-    // Print in reverse
+	/*
+		Reverse
+	*/
     while (--i >= 0) {
         putchar_output(buffer[i]);
     }
@@ -88,7 +90,7 @@ int printf(const char* format, ...) {
                 format++;
             }
             
-            // Parse long modifier
+            // Parse long modifier, because its printf
             int is_long = 0;
             if (*format == 'l') {
                 is_long = 1;
@@ -185,7 +187,8 @@ int printf(const char* format, ...) {
 }
 
 /*
-    UTILITY FUNCTIONS
+    UTILITY FUNCTIONS or
+	unwanted ones...
 */
 void set_printf_output(int target) {
     current_output = (output_target_t)target;

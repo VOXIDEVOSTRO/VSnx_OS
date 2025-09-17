@@ -62,7 +62,9 @@ int multiboot2_parse_memory_map(uint64_t multiboot2_addr) {
                 
                 vsnx_mmap.region_count++;
             }
-            
+			/*
+				debug info DUMP
+			*/
             #ifdef DEBUG
             printf("MULTIBOOT2: Memory map parsed successfully\n");
             #endif
@@ -82,7 +84,7 @@ int multiboot2_parse_memory_map(uint64_t multiboot2_addr) {
     #ifdef DEBUG
     printf("MULTIBOOT2: No memory map found\n");
     #endif
-    return -1; // error
+    return -1; // error/YOU FAILURE
 }
 /*
 	Print detailed memory map

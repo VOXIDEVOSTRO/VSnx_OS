@@ -5,6 +5,7 @@
 */
 #include <stdint.h>
 #include "../../pci/pci.h"
+#include "../../../threading/thread.h"
 /*
     Disk Types
 */
@@ -73,7 +74,7 @@ int disk_read(uint8_t disk_id, uint64_t lba, uint32_t count, void* buffer);
 int disk_write(uint8_t disk_id, uint64_t lba, uint32_t count, const void* buffer);
 
 /*
-    Disk Information Functions
+    Disk Info functions
 */
 void disk_print_info(void);
 int disk_test_io(uint8_t disk_id);

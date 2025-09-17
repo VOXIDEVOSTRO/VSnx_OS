@@ -212,6 +212,14 @@ void init_syscalls (void) {
     syscall_table[21].handler = thread_terminate_handler;
     syscall_table[21].name    = "thread_terminate";
     syscall_table[21].arg_count = 1;
+
+    syscall_table[28].handler = thread_block_handler;
+    syscall_table[28].name = "thread_block";
+    syscall_table[28].arg_count = 0;
+
+    syscall_table[29].handler = thread_unblock_handler;
+    syscall_table[29].name = "thread_unblock";
+    syscall_table[29].arg_count = 0;
 	/*
 		proc/process
 	*/
@@ -226,7 +234,38 @@ void init_syscalls (void) {
     syscall_table[24].handler = kill_process_handler;
     syscall_table[24].name = "kill_process";
     syscall_table[24].arg_count = 1;
+	/*
+		IPC pipes
+	*/
+	syscall_table[25].handler = makepipe_handler;
+	syscall_table[25].name = "makepipe";
+	syscall_table[25].arg_count = 2;
 
+	syscall_table[26].handler = getpipe_handler;
+	syscall_table[26].name = "getpipe";
+	syscall_table[26].arg_count = 1;
+	/*
+		SYSTEM clock
+	*/
+	syscall_table[30].handler = time_now_ms_handler;
+	syscall_table[30].name = "time_now_ms";
+	syscall_table[30].arg_count = 0;
+
+	syscall_table[31].handler = uptime_seconds_handler;
+	syscall_table[31].name = "uptime_seconds";
+	syscall_table[31].arg_count = 0;
+
+	syscall_table[32].handler = uptime_minutes_handler;
+	syscall_table[32].name = "uptime_minutes";
+	syscall_table[32].arg_count = 0;
+
+	syscall_table[33].handler = time_after_handler;
+	syscall_table[33].name  = "time_after";
+	syscall_table[33].arg_count = 2;
+
+	syscall_table[34].handler = time_before_handler;
+	syscall_table[34].name = "time_before";
+	syscall_table[34].arg_count = 2;
 	/*
 		Set the IDT
 	*/

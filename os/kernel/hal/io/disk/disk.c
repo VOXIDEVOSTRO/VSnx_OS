@@ -181,11 +181,13 @@ disk_t* disk_get(uint8_t id) {
     Read sectors from disk
 */
 int disk_read(uint8_t disk_id, uint64_t lba, uint32_t count, void* buffer) {
+	thread_block();
     disk_t* disk = disk_get(disk_id);
     if (!disk) {
         #ifdef DEBUG
         printf("DISK: Invalid disk ID %d\n", disk_id);
         #endif
+		thread_unblock();
         return -1;
     }
     
@@ -193,6 +195,7 @@ int disk_read(uint8_t disk_id, uint64_t lba, uint32_t count, void* buffer) {
         #ifdef DEBUG
         printf("DISK: Read beyond disk capacity\n");
         #endif
+		thread_unblock();
         return -2;
     }
     
@@ -208,10 +211,11 @@ int disk_read(uint8_t disk_id, uint64_t lba, uint32_t count, void* buffer) {
                 #ifdef DEBUG
                 printf("DISK: No IDE device data\n");
                 #endif
+				thread_unblock();
                 return -3;
             }
             
-            // IDE can only read 256 sectors at once
+            // IDE or ATA(matters on you how to say)can only read 256 sectors at once
             uint32_t sectors_read = 0;
             uint8_t* buf = (uint8_t*)buffer;
             
@@ -227,6 +231,7 @@ int disk_read(uint8_t disk_id, uint64_t lba, uint32_t count, void* buffer) {
                     #ifdef DEBUG
                     printf("DISK: IDE read error %d\n", result);
                     #endif
+					thread_unblock();
                     return -4;
                 }
                 
@@ -236,6 +241,7 @@ int disk_read(uint8_t disk_id, uint64_t lba, uint32_t count, void* buffer) {
             #ifdef DEBUG
             printf("DISK: Successfully read %u sectors\n", sectors_read);
             #endif
+			thread_unblock();
             return 0;
         }
         
@@ -243,6 +249,7 @@ int disk_read(uint8_t disk_id, uint64_t lba, uint32_t count, void* buffer) {
             #ifdef DEBUG
             printf("DISK: ATAPI read not implemented\n");
             #endif
+			thread_unblock();
             return -5;
             
         case DISK_TYPE_AHCI:
@@ -252,11 +259,13 @@ int disk_read(uint8_t disk_id, uint64_t lba, uint32_t count, void* buffer) {
 		        #ifdef DEBUG
 		        printf("DISK: AHCI read error %d\n", result);
 		        #endif
+				thread_unblock();
 		        return -6;
 		    }
 		    #ifdef DEBUG
 		    printf("DISK: Successfully read %u sectors via AHCI\n", count);
 		    #endif
+			thread_unblock();
 		    return 0;
 		}
 
@@ -264,18 +273,21 @@ int disk_read(uint8_t disk_id, uint64_t lba, uint32_t count, void* buffer) {
             #ifdef DEBUG
             printf("DISK: NVMe read not implemented\n");
             #endif
+			thread_unblock();
             return -7;
             
         case DISK_TYPE_SCSI:
             #ifdef DEBUG
             printf("DISK: SCSI read not implemented\n");
             #endif
+			thread_unblock();
             return -8;
             
         default:
             #ifdef DEBUG
             printf("DISK: Unknown disk type %d\n", disk->type);
             #endif
+			thread_unblock();
             return -9;
     }
 }
@@ -284,6 +296,7 @@ int disk_read(uint8_t disk_id, uint64_t lba, uint32_t count, void* buffer) {
     Write sectors to disk
 */
 int disk_write(uint8_t disk_id, uint64_t lba, uint32_t count, const void* buffer) {
+	thread_block();
     disk_t* disk = disk_get(disk_id);
     if (!disk) {
         #ifdef DEBUG
@@ -331,6 +344,7 @@ int disk_write(uint8_t disk_id, uint64_t lba, uint32_t count, const void* buffer
                     printf("DISK: IDE write error %d\n", result);
                     #endif
                     return -4;
+					thread_unblock();
                 }
                 
                 sectors_written += sectors_to_write;
@@ -346,6 +360,7 @@ int disk_write(uint8_t disk_id, uint64_t lba, uint32_t count, const void* buffer
             #ifdef DEBUG
             printf("DISK: ATAPI write not supported\n");
             #endif
+			thread_unblock();
             return -5;
             
         case DISK_TYPE_AHCI:
@@ -355,32 +370,37 @@ int disk_write(uint8_t disk_id, uint64_t lba, uint32_t count, const void* buffer
 		        #ifdef DEBUG
 		        printf("DISK: AHCI write error %d\n", result);
 		        #endif
+				thread_unblock();
 		        return -6;
 		    }
 		    #ifdef DEBUG
 		    printf("DISK: Successfully wrote %u sectors via AHCI\n", count);
 		    #endif
+			thread_unblock();
 		    return 0;
 		}
         case DISK_TYPE_NVME:
             #ifdef DEBUG
             printf("DISK: NVMe write not implemented\n");
             #endif
+			thread_unblock();
             return -7;
             
         case DISK_TYPE_SCSI:
             #ifdef DEBUG
             printf("DISK: SCSI write not implemented\n");
             #endif
+			thread_unblock();
             return -8;
             
         default:
             #ifdef DEBUG
             printf("DISK: Unknown disk type %d\n", disk->type);
             #endif
+			thread_unblock();
             return -9;
     }
-}
+}	
 
 /*
     Print disk information

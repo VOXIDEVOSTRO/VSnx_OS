@@ -1,0 +1,1 @@
+So Here we have startup apps. We will use config files do to this. prolly check what i can do.

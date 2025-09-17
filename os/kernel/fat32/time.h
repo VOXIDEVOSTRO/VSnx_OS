@@ -1,13 +1,16 @@
 #ifndef TIME_H
 #define TIME_H
-
+/*
+	Header files
+*/
 #include <stdint.h>
-
 /*
     Time types
 */
 typedef long time_t;
-
+/*
+	UNIX time?
+*/
 struct tm {
     int tm_sec;     // Seconds (0-60)
     int tm_min;     // Minutes (0-59)
@@ -19,7 +22,6 @@ struct tm {
     int tm_yday;    // Day of year (0-365)
     int tm_isdst;   // Daylight saving time flag
 };
-
 /*
     Time function prototypes
 */

@@ -8,6 +8,6 @@ void _start(void) {
     
 	while (1) {
         __asm__ volatile("nop");
-		//print("hello BS stupid! SRYY from test2\n");
+		print("hello BS stupid! SRYY from test2\n");
     }
 }

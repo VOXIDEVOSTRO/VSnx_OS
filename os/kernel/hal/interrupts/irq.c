@@ -4,6 +4,7 @@
 #include "interrupts.h"
 #include "../../threading/thread.h"
 #include "../io/ps2/ps2.h"
+#include "../../systemclock/clock.h"
 /*
     IRQ Handler - Hardware interrupt handling
 */
@@ -36,6 +37,7 @@ void irq_handler(interrupt_frame_t* frame) {
 				Schedular duh...
 			*/
 			scheduler_tick(frame);
+			system_clock_tick(/*UPDATE the clock*/);
             break;
         case 1:
             ps2_keyboard_interrupt_handler(frame);

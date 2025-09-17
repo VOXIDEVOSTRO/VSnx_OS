@@ -5,8 +5,9 @@
 #include "block.h"
 #include "../hal/io/disk/disk.h"
 #include "../utilities/utility.h"
-
-// Current block device state
+/*
+	BLOCK state
+*/
 uint8_t current_disk = 0;
 int block_initialized = 0;
 int last_error = 0;
@@ -165,11 +166,13 @@ int block_get_error() {
 }
 
 /*
-    Additional functions for kernel use
+	This is for kernel
 */
 void block_set_device(uint8_t disk_id) {
     current_disk = disk_id;
-    // Re-initialize with new disk
+	/*
+		We can change disks
+	*/
     block_halt();
     block_init();
 }

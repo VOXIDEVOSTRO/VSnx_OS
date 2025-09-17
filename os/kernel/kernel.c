@@ -71,6 +71,10 @@
 */
 #include "driver/hookregistry/graphics/gfx.h"
 /*
+	Startup configuration parsing
+*/
+#include "startup/startup.h"
+/*
 	MAIN KERNEL ENTRY POINT
 	The starting point of the kernel
 */
@@ -477,10 +481,33 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		THEN first try to check for a VGA graphics
 		Both modes are supported: 13h and 12h
 	*/
+
+
+
+	/*
+	
+		UN COMMENT if we want to test VGA.
+		For vga driver
+	
+	*/
+
+	//#define VGA /*UNCOMMENT IF NEED VGA!*/
+
+	#ifdef VGA
 	vga_load_graphics_driver(/*Load some drivers, In this case its VGA*/);
+	#endif
 	#ifdef DEBUG
 	printf("VSnx: Done\n");
 	#endif
+    // Call startup config parser to spawn processes
+    #ifdef DEBUG
+    printf("KERNEL: Parsing startup process list...\n");
+    #endif
+	/*
+		LOAD the start up apps
+		simple config parsing
+	*/
+    parse_startup_list();
     while (1) { /*main idle*/
 		/*
 			Void of a loop
@@ -488,10 +515,12 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		/*
 			ALSo here is demostration of the drivers and thier interfaces
 		*/
+		#ifdef VGA
 		gfx_fill_rect(20,  20,  80, 60, 4);   
         gfx_fill_rect(120, 20,  80, 60, 2);
         gfx_fill_rect(220, 20,  80, 60, 1); 
         gfx_fill_rect(100, 100, 120, 80, 15);
+		#endif
         __asm__ volatile("hlt"); // wait for interrupt
     }
 }
