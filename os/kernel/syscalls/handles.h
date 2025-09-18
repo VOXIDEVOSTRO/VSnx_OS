@@ -45,7 +45,7 @@ int64_t thread_unblock_handler(uint64_t unused1, uint64_t unused2, uint64_t unus
 /*
 	Process
 */
-int64_t spawn_process_handler(uint64_t filename_ptr, uint64_t privilege_arg, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
+int64_t spawn_process_handler(uint64_t filename_ptr, uint64_t priority, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 int64_t execute_process_handler(uint64_t pid_arg, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 int64_t kill_process_handler(uint64_t pid_arg, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 /*

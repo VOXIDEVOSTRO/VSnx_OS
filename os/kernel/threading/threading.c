@@ -38,7 +38,7 @@ void threading_init(void) {
     kernel_thread->tid = 0;
     kernel_thread->state = THREAD_RUNNING;
     kernel_thread->privilege = THREAD_RING0;
-    kernel_thread->priority = THREAD_PRIORITY_KERNEL;
+    kernel_thread->priority = THREAD_PRIORITY_IMMEDIATES;
     kernel_thread->next = NULL;
     
     current_thread = kernel_thread;

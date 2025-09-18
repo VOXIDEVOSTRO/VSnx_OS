@@ -25,7 +25,7 @@ extern uint32_t next_pid;
 /*
 	prottypes
 */
-process_t* spawn_process(const char* filename, thread_privilege_t privilege);
+process_t* spawn_process(const char* filename, thread_privilege_t privilege, thread_priority_t priority);
 int kill_process(uint32_t pid);
 int execute_process(process_t* proc);
 #endif

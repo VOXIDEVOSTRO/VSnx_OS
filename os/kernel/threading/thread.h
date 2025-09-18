@@ -26,9 +26,11 @@ typedef enum {
 // Thread priority levels
 typedef enum {
     THREAD_PRIORITY_LOW = 0,
+	THREAD_PRIORITY_BACKGROUND,
     THREAD_PRIORITY_NORMAL,
     THREAD_PRIORITY_HIGH,
-    THREAD_PRIORITY_KERNEL
+	THREAD_PRIORITY_ULTRA,
+    THREAD_PRIORITY_IMMEDIATES
 } thread_priority_t;
 /*
 	Thread control block
@@ -45,6 +47,7 @@ typedef struct thread {
     uint64_t kernel_stack;           // Kernel stack for ring transitions
     uint32_t time_slice;             // Time quantumdon
     uint32_t time_used;              // Time used in current slice
+	int cooldown;
     struct thread* next;             // Next thread in scheduler queue
     void* user_data;                 // User-defined data 
 } thread_t;
@@ -65,6 +68,9 @@ extern thread_t* current_thread;
 extern thread_t* ready_queue;
 extern uint32_t next_tid;
 extern uint32_t thread_count;
+extern int scheduler_counter;
+#ifndef THREADS
+#define THREADS
 /*
 	Prototypes
 */
@@ -83,4 +89,5 @@ int thread_block(void);
 void scheduler_tick(interrupt_frame_t* frame);
 void remove_from_ready_queue(thread_t* target);
 void add_to_ready_queue(thread_t* thread);
+#endif
 #endif

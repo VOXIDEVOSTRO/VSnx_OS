@@ -238,18 +238,19 @@ int64_t thread_unblock_handler(uint64_t unused1, uint64_t unused2, uint64_t unus
 	Process
 */
 
-int64_t spawn_process_handler(uint64_t filename_ptr, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6)
+int64_t spawn_process_handler(uint64_t filename_ptr, uint64_t priority, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6)
 {
-    (void)unused2; (void)unused3; (void)unused4; (void)unused5; (void)unused6;
+	(void)unused3; (void)unused4; (void)unused5; (void)unused6;
 
     const char* filename = (const char*)filename_ptr;
     int privilege = THREAD_RING3;
+	thread_priority_t thread_priority = priority;
 
     if (!filename) {
         return -1;
     }
 
-    process_t* proc = spawn_process(filename, (thread_privilege_t)privilege);
+    process_t* proc = spawn_process(filename, (thread_privilege_t)privilege, thread_priority);
     if (!proc) {
         return -2; // YOU FAILURE
     }

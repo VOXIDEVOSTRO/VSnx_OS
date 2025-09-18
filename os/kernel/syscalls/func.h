@@ -2,9 +2,11 @@
 	Syscall.h and this will be use for predelared functions for easy use.
 	Also as always: HEADER FILES!
 */
+#define THREADS
 #include "syscall.h"
 #include "../ipc/ipc.h"
 #include <stdbool.h>
+#include "../threading/thread.h"
 /*
 	prototypes
 	Because of the compiler...

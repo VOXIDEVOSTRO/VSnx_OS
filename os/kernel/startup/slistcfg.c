@@ -3,6 +3,71 @@
 */
 #include "startup.h"
 /*
+	Helper function to parse path and priority from line
+	just to handle and get the priority
+*/
+void parse_line(const char* line, char* path, thread_priority_t* priority) {
+	/*
+		Copy
+	*/
+    char temp[MAX_LINE_LENGTH];
+    strcpy(temp, line);
+	/*
+		Find the last space on the line
+	*/
+    char* last_space = strrchr(temp, ' ');
+    if (last_space) {
+        *last_space = '\0';/*NULL TERMINATE*/
+        strcpy(path, temp); 
+		/*
+			After the line. we have the priority
+		*/
+        char* pri_str = last_space + 1;
+		/*
+			Handle the lows
+		*/
+        if (strcmp(pri_str, "LOW") == 0) {
+            *priority = THREAD_PRIORITY_LOW;
+		/*
+			handle normals
+		*/
+        } else if (strcmp(pri_str, "NORMAL") == 0) {
+            *priority = THREAD_PRIORITY_NORMAL;
+		/*
+			Aswell as the HIGHs
+		*/
+        } else if (strcmp(pri_str, "HIGH") == 0) {
+            *priority = THREAD_PRIORITY_HIGH;
+		/*
+			Ultras too
+		*/
+		} else if (strcmp(pri_str, "ULTRA") == 0) {
+            *priority = THREAD_PRIORITY_ULTRA;
+		/*
+			And backbenchers
+		*/
+		} else if (strcmp(pri_str, "BACKGROUND") == 0) {
+            *priority = THREAD_PRIORITY_BACKGROUND;
+		/*
+			And some critical and high performance ones too.
+		*/
+		} else if (strcmp(pri_str, "IMMEDIATES") == 0) {
+            *priority = THREAD_PRIORITY_IMMEDIATES;
+        } else {
+			/*
+				If none normal up
+			*/
+            *priority = THREAD_PRIORITY_NORMAL;
+        }
+    } else {
+		/*
+			Same as the above
+		*/
+        strcpy(path, temp);
+        *priority = THREAD_PRIORITY_NORMAL;
+    }
+}
+/*
 
 	MAIN parser for the config file
 	So works by a path per line.
@@ -78,16 +143,19 @@ void parse_startup_list(void) {
 						SKIP comments
 					*/
                     if (*start && *start != '#') {
+                        char path[MAX_LINE_LENGTH];
+                        thread_priority_t priority;
+                        parse_line(start, path, &priority);
                         #ifdef DEBUG
-                        printf("STARTUP: Spawning process: %s\n", start);
+                        printf("STARTUP: Spawning process: %s with priority %d\n", path, priority);
                         #endif
 						/*
 							Loop and spawn them
 						*/
-                        process_t* proc = spawn_process(start, THREAD_RING3);
+                        process_t* proc = spawn_process(path, THREAD_RING3, priority);
                         if (proc) {
                             #ifdef DEBUG
-                            printf("STARTUP: Successfully spawned PID=%d for %s\n", proc->pid, start);
+                            printf("STARTUP: Successfully spawned PID=%d for %s\n", proc->pid, path);
                             #endif
 							/*
 								Also execute it
@@ -96,7 +164,7 @@ void parse_startup_list(void) {
                             processes_spawned++/*+1*/;
                         } else {
                             #ifdef DEBUG
-                            printf("STARTUP: Failed to spawn process: %s\n", start);
+                            printf("STARTUP: Failed to spawn process: %s\n", path);
                             #endif
                         }
 						/*
@@ -149,16 +217,19 @@ void parse_startup_list(void) {
 			Ignore comments
 		*/
         if (*start && *start != '#') {
+            char path[MAX_LINE_LENGTH];
+            thread_priority_t priority;
+            parse_line(start, path, &priority);
             #ifdef DEBUG
-            printf("STARTUP: Spawning final process: %s\n", start);
+            printf("STARTUP: Spawning final process: %s with priority %d\n", path, priority);
             #endif
 			/*
 				Spawn UP
 			*/
-            process_t* proc = spawn_process(start, THREAD_RING3/*always keep ring3 to avoid exploition*/);
+            process_t* proc = spawn_process(path, THREAD_RING3/*always keep ring3 to avoid exploition*/, priority);
             if (proc) {
                 #ifdef DEBUG
-                printf("STARTUP: Successfully spawned PID=%d for %s\n", proc->pid, start);
+                printf("STARTUP: Successfully spawned PID=%d for %s\n", proc->pid, path);
                 #endif
 				/*
 					Execute!
@@ -167,7 +238,7 @@ void parse_startup_list(void) {
                 processes_spawned++;
             } else {
                 #ifdef DEBUG
-                printf("STARTUP: Failed to spawn final process: %s\n", start);
+                printf("STARTUP: Failed to spawn final process: %s\n", path);
                 #endif
             }
         }

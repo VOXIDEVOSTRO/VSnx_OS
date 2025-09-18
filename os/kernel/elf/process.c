@@ -13,7 +13,7 @@ uint32_t next_pid = 1;
 /*
 	No spawn egg. LOL i mean spawn the process
 */
-process_t* spawn_process(const char* filename, thread_privilege_t privilege) {
+process_t* spawn_process(const char* filename, thread_privilege_t privilege, thread_priority_t priority) {
     #ifdef DEBUG
     printf("PROCESS: Spawning %s (Ring %d)\n", filename, privilege);
     #endif
@@ -49,9 +49,7 @@ process_t* spawn_process(const char* filename, thread_privilege_t privilege) {
     /*
 		AND finally the thread
 	*/
-    proc->main_thread = thread_create((thread_func_t)entry_point, NULL, 
-                                 privilege, THREAD_PRIORITY_NORMAL, 
-                                 proc->pid);
+    proc->main_thread = thread_create((thread_func_t)entry_point, NULL, privilege, priority, proc->pid);
     /*
 		validate the thread
 	*/

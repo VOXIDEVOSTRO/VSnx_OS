@@ -35,6 +35,7 @@ uint64_t elf_parse(const char* filename) {
     /*
 		Validate the magic
 		The magic is [0x7F]ELF
+		or in raw bytes its: 0x464C457F 
 	*/
     if (*(uint32_t*)elf_hdr.e_ident != ELF_MAGIC) {
         #ifdef DEBUG
@@ -56,7 +57,7 @@ uint64_t elf_parse(const char* filename) {
     }
     
     #ifdef DEBUG
-    printf("ELF: Valid x86-64 executable, entry=0x%lx\n", elf_hdr.e_entry);
+    printf("ELF: Valid x86-64 executable or AMD64, entry=0x%lx\n", elf_hdr.e_entry);
     #endif
     
     uint64_t actual_entry_point = 0;
@@ -100,7 +101,7 @@ uint64_t elf_parse(const char* filename) {
     
     if (actual_entry_point == 0) {
         #ifdef DEBUG
-        printf("ELF: Entry point not found in any loaded segment\n");
+        printf("ELF: Entry point not found in any loaded segment, some thing is wrong\n");
         #endif
         return 0;
     }
@@ -122,7 +123,10 @@ uint64_t elf_load_segment(elf64_phdr_t* phdr, int fd, uint64_t elf_entry) {
 	#endif
     
     /*
-		Alloc some memory via VMM
+		Alloc some memory via VMM.
+		because VMM is user memory.
+		so that user doesnt cause pagefaults
+		or segmentation faults?
 	*/
     void* segment_mem = umalloc(phdr->p_memsz);
     if (!segment_mem) {

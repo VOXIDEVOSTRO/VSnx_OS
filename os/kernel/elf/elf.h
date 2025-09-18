@@ -1,6 +1,10 @@
 #ifndef ELF_H
 #define ELF_H
 /*
+	Very basic of a ELF loader,
+	also tied to our process
+*/
+/*
 	header files
 */
 #include <stdint.h>
@@ -24,7 +28,7 @@ typedef struct {
     uint16_t e_phnum;        // Program header entry count
     uint16_t e_shentsize;    // Section header entry size
     uint16_t e_shnum;        // Section header entry count
-    uint16_t e_shstrndx;     // Section header string table index
+    uint16_t e_shstrndx;     // Section header string table index (for strings)
 } __attribute__((packed)) elf64_hdr_t;
 /*
 	Program header

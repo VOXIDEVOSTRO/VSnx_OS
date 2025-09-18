@@ -81,13 +81,13 @@ void vga_load_graphics_driver(void) {
         #ifdef DEBUG
         serial_print(COM1_PORT, "VGA_GFX: Mode 13h detected, loading driver...\r\n");
         #endif
-        process_t* mod13 = spawn_process("/MODULES/SYS/DRIVERS/VGA/VGAMODTWO.ELF", THREAD_RING0/*This is 13h*/);
+        process_t* mod13 = spawn_process("/MODULES/SYS/DRIVERS/VGA/VGAMODTWO.ELF", THREAD_RING0/*This is 13h*/, THREAD_PRIORITY_LOW);
 		execute_process(mod13); // execute DUH...
     } if (mode12) {
         #ifdef DEBUG
         serial_print(COM1_PORT, "VGA_GFX: Mode 12h detected, loading driver...\r\n");
         #endif
-        process_t* mod12 = spawn_process("/MODULES/SYS/DRIVERS/VGA/VGAMODONE.ELF", THREAD_RING0/*This is prolly 12h*/);
+        process_t* mod12 = spawn_process("/MODULES/SYS/DRIVERS/VGA/VGAMODONE.ELF", THREAD_RING0/*This is prolly 12h*/, THREAD_PRIORITY_LOW);
 		execute_process(mod12);
     } else {
         #ifdef DEBUG

@@ -18,19 +18,31 @@ void putchar_output(char c) {
     if (current_output & OUTPUT_SERIAL) {
         serial_putchar(COM1_PORT, c);
     }
+	/*
+		we puting both em atually
+	*/
     if (current_output & OUTPUT_VGA) {
         vga_putchar(c);
     }
 }
 
 void print_string(const char* str) {
+	/*
+		Simple
+	*/
     while (*str) {
+		/*Both VGA and SERIAL*/
         putchar_output(*str++);
     }
 }
-
+/*
+	so number with a padding?
+*/
 void print_number_padded(uint64_t num, int base, int uppercase, int width, char pad) {
     char buffer[32];
+	/*
+		Prolly handle both upper and lower
+	*/
     char* digits = uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
     int i = 0;
     
@@ -55,7 +67,9 @@ void print_number_padded(uint64_t num, int base, int uppercase, int width, char 
         putchar_output(buffer[i]);
     }
 }
-
+/*
+	Meaning negative digits
+*/
 void print_signed(int64_t num, int base) {
     if (num < 0) {
         putchar_output('-');
@@ -78,7 +92,9 @@ int printf(const char* format, ...) {
         if (*format == '%') {
             format++;
             
-            // Parse width and padding
+			/*
+				Parse up the width
+			*/
             int width = 0;
             char pad = ' ';
             if (*format == '0') {
@@ -89,8 +105,9 @@ int printf(const char* format, ...) {
                 width = width * 10 + (*format - '0');
                 format++;
             }
-            
-            // Parse long modifier, because its printf
+            /*
+            	Parse long modifier, because its printf
+			*/
             int is_long = 0;
             if (*format == 'l') {
                 is_long = 1;

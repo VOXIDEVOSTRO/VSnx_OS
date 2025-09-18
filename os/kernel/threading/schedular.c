@@ -4,18 +4,30 @@
 #include "../hal/interrupts/interrupts.h"
 #include "thread.h"
 /*
-	PREEMPTIVE schedular
-	round robin
+	some globals
+	for the priority
 */
-void scheduler_tick(interrupt_frame_t* frame) {
+int scheduler_counter = 0;
+/*
+	PREEMPTIVE schedular
+	round robin, AND also with priority.
+	Hybrid?
+*/
+void scheduler_tick(interrupt_frame_t* frame/*the irq will pass this*/) {
     if (!frame) return; // NULL check
+	/*
+		IMPORTANT counter to keep track of priority
+	*/
+	scheduler_counter++;
 	/*
 		Handle the current thread we point'in
 		to
 	*/
     if (current_thread) {
         current_thread->context = *frame;
-        
+        /*
+			Handle the states
+		*/
         if (current_thread->state == THREAD_RUNNING) {
             current_thread->state = THREAD_READY;
             add_to_ready_queue(current_thread);
@@ -43,6 +55,9 @@ void scheduler_tick(interrupt_frame_t* frame) {
     if (!next_thread) {
         extern thread_t* thread_table[MAX_THREADS];
         for (int i = 1; i < MAX_THREADS; i++) {
+			/*
+				Find up the next
+			*/
             if (thread_table[i] && thread_table[i]->state == THREAD_READY) {
                 next_thread = thread_table[i];
                 break;
@@ -56,6 +71,9 @@ void scheduler_tick(interrupt_frame_t* frame) {
     if (!next_thread) {
         extern thread_t* thread_table[MAX_THREADS];
         for (int i = 1; i < MAX_THREADS; i++) {
+			/*
+				handle the current
+			*/
             if (thread_table[i] && 
                 (thread_table[i]->state == THREAD_READY || 
                  thread_table[i]->state == THREAD_RUNNING)) {
@@ -66,7 +84,7 @@ void scheduler_tick(interrupt_frame_t* frame) {
     }
     
     /*
-		jUST be with the kernel incase nothing to run
+		JUST be with the kernel incase nothing to run
 	*/
     if (!next_thread) {
         extern thread_t* thread_table[MAX_THREADS];
@@ -74,7 +92,9 @@ void scheduler_tick(interrupt_frame_t* frame) {
             next_thread = thread_table[0];
         }
     }
-    
+    /*
+		Incase no thread
+	*/
     if (!next_thread) return;
     
 	/*
@@ -85,7 +105,49 @@ void scheduler_tick(interrupt_frame_t* frame) {
         remove_from_ready_queue(next_thread);
         return;
     }
-    
+	/*
+		Frequency check.
+		We have priority check,
+		This would be a massive BOOST.
+		ALSO:
+
+		Here lower number the better
+		We also call these skip rates/stride rate
+		we may fine tune this later... for now its good
+	*/
+	int stride = 1;
+	/*
+		THE ULTRA ones. so we give these a stride rate of 2
+	*/
+	if (		next_thread->priority == THREAD_PRIORITY_ULTRA)      	stride = 2;
+	/*
+		The normal ones, like normal apps which are less intensive, so give them of 4
+	*/
+	else if (	next_thread->priority == THREAD_PRIORITY_NORMAL) 		stride = 4;
+	/*
+		The lower ones like services but lets give this a 16
+	*/
+	else if (	next_thread->priority == THREAD_PRIORITY_LOW)    		stride = 16;
+	/*
+		And the backbenchers, the background and idler apps with stride of 64
+	*/
+	else if (	next_thread->priority == THREAD_PRIORITY_BACKGROUND) 	stride = 64;
+	/*
+		Also we will track the cooldown
+	*/
+	if (next_thread->cooldown > 0) {
+	    next_thread->cooldown--;
+	    add_to_ready_queue(next_thread);
+		/*
+			Try again later
+		*/
+	    return;
+	} else {
+		/*
+			Reset up the cool down
+		*/
+	    next_thread->cooldown = stride - 1;
+	}
 	/*
 		This would change
 	*/
@@ -101,20 +163,27 @@ void scheduler_tick(interrupt_frame_t* frame) {
 	 	RING3
     */
     if (current_thread->privilege == THREAD_RING3) {
+		/*
+			Set the TSS
+		*/
         extern tss_t tss;
         
         if (!current_thread->kernel_stack) {
             current_thread->state = THREAD_TERMINATED;
             return;
         }
-        
+        /*
+			Also handle the kernel stack
+		*/
         tss.rsp0 = current_thread->kernel_stack + KERNEL_STACK_SIZE - 8;
         
         if (!current_thread->context.rsp || current_thread->context.rsp < 0x400000000000UL) {
             current_thread->state = THREAD_TERMINATED;
             return;
         }
-        
+        /*
+			Restore
+		*/
         frame->rax = current_thread->context.rax;
         frame->rbx = current_thread->context.rbx;
         frame->rcx = current_thread->context.rcx;
@@ -130,7 +199,9 @@ void scheduler_tick(interrupt_frame_t* frame) {
         frame->r13 = current_thread->context.r13;
         frame->r14 = current_thread->context.r14;
         frame->r15 = current_thread->context.r15;
-        
+        /*
+			The main of the frame
+		*/
         frame->rip = current_thread->context.rip;
         frame->cs = USER_CODE_SELECTOR;
         frame->rflags = current_thread->context.rflags | 0x200;
