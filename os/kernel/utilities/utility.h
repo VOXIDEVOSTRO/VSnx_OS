@@ -20,6 +20,7 @@
 
 //#define DEBUG 				/*UNCOMMENT THIS TO SEE EXTRA OUTPUT!*/
 //#define FAT_DEBUG 			/*UNCOMMENT THIS TO SEE EXTRA OUTPUT! for gristle driver*/
+//#define TEST					/*UNCOMMENT THIS FOR EXTRA TESTS!*/
 
 
 /*

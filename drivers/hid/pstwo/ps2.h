@@ -7,9 +7,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "keyps2.h"
-#include "ps2mouse.h"
-#include "../../../utilities/utility.h"
+#include "keybrd/keyps2.h"
 /*
 	Pretty standard control ports
 	data = 60
@@ -93,8 +91,15 @@ typedef enum {
 */
 typedef struct {
     bool dual_channel;
+	/*
+		both ports 1 and 2
+	*/
     bool port1_exists;
     bool port2_exists;
+	/*
+		The two port devices:
+		keyboard and mouse
+	*/
     ps2_device_type_t port1_device;
     ps2_device_type_t port2_device;
     uint8_t config_byte;
@@ -104,17 +109,4 @@ typedef struct {
 	Globals
 */
 extern ps2_controller_t ps2_controller;
-/*
-	Prototypes
-*/
-bool ps2_wait_input(void);
-bool ps2_wait_output(void);
-void ps2_write_command(uint8_t command);
-void ps2_write_data(uint8_t data);
-uint8_t ps2_read_data(void);
-bool ps2_read_data_timeout(uint8_t *data, uint32_t timeout_ms);
-bool ps2_send_device_command(uint8_t port, uint8_t command);
-bool ps2_send_device_command_with_data(uint8_t port, uint8_t command, uint8_t data);
-ps2_device_type_t ps2_identify_device(uint8_t port);
-bool ps2_is_initialized(void);
 #endif

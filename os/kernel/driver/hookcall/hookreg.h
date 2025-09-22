@@ -21,6 +21,15 @@ static inline hook_func_t get_hookling(const char* name) {
 	Some mapping stuff
 	just in case
 */
+#define PAGE_PRESENT    0x001
+#define PAGE_WRITABLE   0x002
+#define PAGE_USER       0x004
+#define PAGE_ACCESSED   0x020
+#define PAGE_DIRTY      0x040
+#define PAGE_SIZE_2MB   0x080
+#define PAGE_GLOBAL     0x100
+#define PAGE_NX         0x8000000000000000ULL
+
 static inline int map_page(uint64_t vaddr, uint64_t paddr, uint32_t flags) {
     return hookcall(7, vaddr, paddr, flags, 0, 0, 0);
 }

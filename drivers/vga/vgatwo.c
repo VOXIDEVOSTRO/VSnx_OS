@@ -15,6 +15,14 @@
 
 */
 /*
+	UNCOMMENT for extra ouput!
+*/
+
+
+//#define DEBUG		/*UNCOMMENT!*/
+
+
+/*
 	Header files
 */
 /*
@@ -204,7 +212,9 @@ static void vga_write_ac(uint8_t index, uint8_t value) {
 }
 
 static void vga13h_set_dac_default(void) {
+    #ifdef DEBUG
     print("[VGA13H] Setting DAC palette for 256-color mode (grayscale base)...\n"/*using grey scale for now here*/);
+    #endif
 	/*
 		Classy VGA palette
 	*/
@@ -229,7 +239,9 @@ static void vga13h_set_dac_default(void) {
         outb(VGA_DAC_DATA, v);
         outb(VGA_DAC_DATA, v);
     }
+    #ifdef DEBUG
     print("[VGA13H] DAC palette set\n");
+    #endif
 }
 /*
 
@@ -237,7 +249,9 @@ static void vga13h_set_dac_default(void) {
 
 */
 static void vga_set_mode_13h(void) {
+    #ifdef DEBUG
     print("[VGA13H] Setting mode 13h (320x200x256 packed)...\n");
+    #endif
 	/*
 		bye bye interrupts
 	*/
@@ -245,7 +259,9 @@ static void vga_set_mode_13h(void) {
 	/*
 		Use vertial retrace
 	*/
+    #ifdef DEBUG
     print("[VGA13H] Waiting for vertical retrace...\n");
+    #endif
     while ((inb(VGA_IS1_RC) & 0x08));
     while (!(inb(VGA_IS1_RC) & 0x08));
 	/*
@@ -302,7 +318,9 @@ static void vga_set_mode_13h(void) {
     vga13h_state.height = VGA_MODE13H_HEIGHT;
     vga13h_state.bpp = VGA_MODE13H_BPP;
     vga13h_state.vga_memory = (volatile uint8_t*)VGA_MEMORY_BASE;
+    #ifdef DEBUG
     print("[VGA13H] Mode 13h set done\n");
+    #endif
 }
 /*
 	BASIC drawing
@@ -406,12 +424,16 @@ void vga13h_driver_cleanup(void) {
 
 */
 void _start(void) {
+    #ifdef DEBUG
     print("[VGA13H] Starting VGA Mode 13h driver...\n");
+    #endif
 	/*
 		Main driver init
 	*/
     if (vga13h_driver_init() == 0) {
+        #ifdef DEBUG
         print("[VGA13H] Driver initialized successfully\n");
+        #endif
 		/*
 			Clear up
 		*/
@@ -419,16 +441,11 @@ void _start(void) {
 		/*
 			ALIVE
 		*/
-        while (1) {
-            __asm__ volatile("nop"/*Noperation*/);
-        }
+		t_block();
     } else {
+        #ifdef DEBUG
         print("[VGA13H] Driver initialization failed!\n");
-    }
-	/*
-		If driver failed to init
-	*/
-    while (1) {
-        __asm__ volatile("nop"/*Nooperation*/);
+        #endif
+		t_block();
     }
 }

@@ -5,7 +5,6 @@
 */
 #include <stdint.h>
 #include "../../../utilities/utility.h"
-//#define DEBUG /*UNCOMMENT THIS TO SEE EXTRA OUTPUT!*/
 
 /*
 	simple constants
@@ -16,7 +15,7 @@
 /*
 	prototypes
 */
-void pit_set_freq(uint32_t frequency);
-void pit_set_div(uint16_t divisor);
-void pit_dump_settings(void);
+void set_freq(uint32_t frequency);
+void set_div(uint16_t divisor);
+void pit_dump(void);
 #endif

@@ -160,7 +160,7 @@ int thread_execute(thread_t* thread) {
 /*
 	Also very simple just remove from ready queue and free the resources
 */
-void thread_exit(void) {
+__attribute__((noreturn)) thread_exit(void) {
 	/*
 		Validate and make sure its NOT the kernel OR CHAOS
 	*/
@@ -318,7 +318,7 @@ thread_state_t thread_get_state(uint32_t tid) {
 	Some healperz
 */
 
-void clean_up(thread_t* thread) {
+__attribute__((noreturn)) void clean_up(thread_t* thread) {
     if (!thread) return;
     
     #ifdef DEBUG
@@ -337,18 +337,32 @@ void clean_up(thread_t* thread) {
 
 	remove_from_ready_queue(thread);
     __asm__ volatile("int $0x20");
-
+	/*
+		RING3
+	*/
     if (thread->privilege == THREAD_RING3) {
         if (thread->stack_base) {
+			/*
+				Clean up stack base of the thread
+			*/
             ufree((void*)thread->stack_base);
             thread->stack_base = 0;
         }
         if (thread->kernel_stack) {
+			/*
+				Clean kernel stack
+			*/
             kfree((void*)thread->kernel_stack);
             thread->kernel_stack = 0;
         }
+	/*
+		RING0
+	*/
     } else {
         if (thread->stack_base) {
+			/*
+				Clean up the stack base of the kernel
+			*/
             kfree((void*)thread->stack_base);
             thread->stack_base = 0;
         }
@@ -358,12 +372,7 @@ void clean_up(thread_t* thread) {
 		Remove from table
 		or else confustion
 	*/
-    for (int i = 0; i < MAX_THREADS; i++) {
-        if (thread_table[i] == thread) {
-            thread_table[i] = NULL;
-            break;
-        }
-    }
+    remove_from_ready_queue(thread);
     
     // duh...
     thread->state = THREAD_TERMINATED;
@@ -373,7 +382,7 @@ void clean_up(thread_t* thread) {
 /*
 	Some block and unblock functions
 */
-int thread_block(void) {
+__attribute__((noreturn)) int thread_block(void) {
 	/*
 		Check CT
 	*/
@@ -416,12 +425,9 @@ int thread_block(void) {
 		call the scheduler
 	*/
     __asm__ volatile("int $0x20");
-
-    return 0;
 }
 
-int thread_unblock(void) {
-    uint32_t tid = gettid();
+int thread_unblock(uint32_t tid) {
     thread_t* thread = thread_get_by_tid(tid);
     if (!thread) {
         #ifdef DEBUG

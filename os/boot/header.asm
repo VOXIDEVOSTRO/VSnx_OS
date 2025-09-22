@@ -239,6 +239,7 @@ long_mode_start:
     jnz .stack_error_64
     
     ; 4. Test stack accessibility by writing/reading
+	; Old shit code from stack issues
     mov qword [rsp-8], 0x5A5A5A5A5A5A5A5A   ; Test write
     cmp qword [rsp-8], 0x5A5A5A5A5A5A5A5A   ; Test read
     jne .stack_error_64

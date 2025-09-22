@@ -21,8 +21,7 @@ int64_t register_hook_handler(uint64_t name_ptr, uint64_t func_ptr, uint64_t arg
 int64_t call_hook_handler(uint64_t name_ptr, uint64_t data_ptr, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5) {
     const char* name = (const char*)name_ptr;
     void* data = (void*)data_ptr;
-    call_hook(name, data);
-    return 0;
+    return call_hook(name, data);
 }
 int64_t get_hook_handler(uint64_t name_ptr, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5, uint64_t arg6) {
     const char* name = (const char*)name_ptr;

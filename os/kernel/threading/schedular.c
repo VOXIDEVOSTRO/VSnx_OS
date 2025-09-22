@@ -7,7 +7,7 @@
 	some globals
 	for the priority
 */
-int scheduler_counter = 0;
+int scheduler_counter/*Should've name it the priority counter*/ = 0;
 /*
 	PREEMPTIVE schedular
 	round robin, AND also with priority.
@@ -16,47 +16,81 @@ int scheduler_counter = 0;
 void scheduler_tick(interrupt_frame_t* frame/*the irq will pass this*/) {
     if (!frame) return; // NULL check
 	/*
-		IMPORTANT counter to keep track of priority
+		Main scheduler counter
+		or priority or stride counter
+		it has a lot of names
 	*/
-	scheduler_counter++;
+    scheduler_counter++;
 	/*
-		Handle the current thread we point'in
-		to
+		handle up the states here
+		This is the pre-state check
+		to avoid a slip in to the queue
 	*/
     if (current_thread) {
+		/*
+
+			Save context
+
+		*/
         current_thread->context = *frame;
-        /*
-			Handle the states
+		/*
+			running and ready ones
 		*/
         if (current_thread->state == THREAD_RUNNING) {
             current_thread->state = THREAD_READY;
             add_to_ready_queue(current_thread);
+		/*
+			terminated ones
+		*/
         } else if (current_thread->state == THREAD_TERMINATED) {
+            remove_from_ready_queue(current_thread);
             current_thread = NULL;
+		/*
+			Blocked threads such as drivers and stuff
+		*/
         } else if (current_thread->state == THREAD_BLOCKED) {
+            remove_from_ready_queue(current_thread);
             current_thread = NULL;
+		/*
+			And the ready ones or the newbie threads
+		*/
         } else {
             current_thread->state = THREAD_READY;
             add_to_ready_queue(current_thread);
         }
     }
-    /*
-		NEXT
+
+	/*
+		Set or init the variable for
+		the next thread for round robin
 	*/
+
     thread_t* next_thread = NULL;
+
+/*
+	You can say this as the 
+	main fall back for skipping the
+	threads in the round robin
+*/
+
+select_again:;
+	/*
+		Find the next thread
+	*/
     if (ready_queue) {
         next_thread = ready_queue;
         ready_queue = ready_queue->next;
         next_thread->next = NULL;
     }
-    /*
-		Check for READY threads: They have THREAD_READY
+	/*
+		If no next thread
+		get the next thread. duh..
 	*/
     if (!next_thread) {
         extern thread_t* thread_table[MAX_THREADS];
         for (int i = 1; i < MAX_THREADS; i++) {
 			/*
-				Find up the next
+				Loop to get and set as ready
 			*/
             if (thread_table[i] && thread_table[i]->state == THREAD_READY) {
                 next_thread = thread_table[i];
@@ -64,27 +98,11 @@ void scheduler_tick(interrupt_frame_t* frame/*the irq will pass this*/) {
             }
         }
     }
-    
-    /*
-		Also for the threads who are currently being scheduled
-	*/
-    if (!next_thread) {
-        extern thread_t* thread_table[MAX_THREADS];
-        for (int i = 1; i < MAX_THREADS; i++) {
-			/*
-				handle the current
-			*/
-            if (thread_table[i] && 
-                (thread_table[i]->state == THREAD_READY || 
-                 thread_table[i]->state == THREAD_RUNNING)) {
-                next_thread = thread_table[i];
-                break;
-            }
-        }
-    }
-    
-    /*
-		JUST be with the kernel incase nothing to run
+	/*
+		If still non found
+		it means no thread yet
+		So if any stray set all as terminated
+		and focus on the kernel
 	*/
     if (!next_thread) {
         extern thread_t* thread_table[MAX_THREADS];
@@ -92,97 +110,128 @@ void scheduler_tick(interrupt_frame_t* frame/*the irq will pass this*/) {
             next_thread = thread_table[0];
         }
     }
-    /*
-		Incase no thread
+	/*
+		If even the kernel doesnt exists???
+		Just return and fault up
 	*/
     if (!next_thread) return;
-    
 	/*
-		Also check if the thread terminated DOESNT slip into the
-		ready queue
+		PICK up the non runnables
+		such as the terminated ones
+		and blocked, incase from the pre-
+		check they slipped in
 	*/
-    if (next_thread->state == THREAD_TERMINATED) {
+    if (next_thread->state == THREAD_BLOCKED || next_thread->state == THREAD_TERMINATED) {
+		/*
+			Remove
+		*/
         remove_from_ready_queue(next_thread);
-        return;
+        next_thread = NULL/*will be set later again*/;
+		/*
+			Find again
+		*/
+        goto select_again;
     }
 	/*
-		Frequency check.
-		We have priority check,
-		This would be a massive BOOST.
-		ALSO:
-
-		Here lower number the better
-		We also call these skip rates/stride rate
-		we may fine tune this later... for now its good
+		PRIORITY handler:
+		it works via adjusting the scheduling frequency
+		which is extremely simple and this freq is denoted
+		via something called a "stride" OR "priority freq".
+		and each thread has cooldown counter which tracks the
+		remaining freq
 	*/
-	int stride = 1;
+    int stride = 1;
 	/*
-		THE ULTRA ones. so we give these a stride rate of 2
+		Handle up the ULTRA ones
+		With a stride of 2
+		and used by the MAIN running active applications
+		such as games, GUI tools or lots of other apps
+		which are currently active
 	*/
-	if (		next_thread->priority == THREAD_PRIORITY_ULTRA)      	stride = 2;
+    if (next_thread->priority == THREAD_PRIORITY_ULTRA)              stride = 2;
 	/*
-		The normal ones, like normal apps which are less intensive, so give them of 4
+		Normal handler:
+		More less GUI intensive but still in active status
+		with a stride of 4
+		like IDEs, text editors, or lightweight games or even simple GUI
+		tools
 	*/
-	else if (	next_thread->priority == THREAD_PRIORITY_NORMAL) 		stride = 4;
+    else if (next_thread->priority == THREAD_PRIORITY_NORMAL)        stride = 4;
 	/*
-		The lower ones like services but lets give this a 16
+		Lower priority ones or also called the service priority,
+		Stride of 16, these are mostly less intensive and passive applications
+		or executables such as cmdlets, background services and a temp thread
 	*/
-	else if (	next_thread->priority == THREAD_PRIORITY_LOW)    		stride = 16;
+    else if (next_thread->priority == THREAD_PRIORITY_LOW)           stride = 16;
 	/*
-		And the backbenchers, the background and idler apps with stride of 64
+		Background ones or also called the idle priority,
+		Stride of 64, these are the COMPLETE passive applications or
+		background services, which only handle normal stuff.
 	*/
-	else if (	next_thread->priority == THREAD_PRIORITY_BACKGROUND) 	stride = 64;
+    else if (next_thread->priority == THREAD_PRIORITY_BACKGROUND)    stride = 64;
 	/*
-		Also we will track the cooldown
+		Handle the cooldown of each priority
+		this took a while to troubleshoot
 	*/
-	if (next_thread->cooldown > 0) {
-	    next_thread->cooldown--;
-	    add_to_ready_queue(next_thread);
+    if (next_thread->cooldown > 0) {
 		/*
-			Try again later
+			-1 the counter if already in the counter
 		*/
-	    return;
-	} else {
+        next_thread->cooldown--;
+        add_to_ready_queue(next_thread);
+        next_thread = NULL;
 		/*
-			Reset up the cool down
+			Go back
 		*/
-	    next_thread->cooldown = stride - 1;
-	}
+        goto select_again;
+    } else {
+		/*
+			If done reset the -1 the stride
+		*/
+        next_thread->cooldown = stride - 1;
+    }
 	/*
-		This would change
+		get the next running or being schduled
 	*/
     current_thread = next_thread;
     current_thread->state = THREAD_RUNNING;
-    
-    /*
-		RESTORE the thread context
-		also based of the previalage
-		(Spelled it wrong again)
-    */
-    /*
-	 	RING3
-    */
+	/*
+	
+		MAIN restoration
+	
+	*/
+	/*
+		RING3
+	*/
     if (current_thread->privilege == THREAD_RING3) {
-		/*
-			Set the TSS
-		*/
         extern tss_t tss;
-        
+		/*
+			handle invalid thread contexts
+		*/
         if (!current_thread->kernel_stack) {
             current_thread->state = THREAD_TERMINATED;
-            return;
+			/*
+				Go back
+			*/
+            goto select_again;
         }
-        /*
-			Also handle the kernel stack
+		/*
+			TSS checkup and set
 		*/
         tss.rsp0 = current_thread->kernel_stack + KERNEL_STACK_SIZE - 8;
-        
-        if (!current_thread->context.rsp || current_thread->context.rsp < 0x400000000000UL) {
+		/*
+			CHECK and validate the rsp
+		*/
+        if (!current_thread->context.rsp /*This is not needed|| current_thread->context.rsp < 0x400000000000UL*/) {
             current_thread->state = THREAD_TERMINATED;
-            return;
+			/*
+				Retry
+			*/
+            goto select_again;
         }
-        /*
-			Restore
+		/*
+			RESTORE the general purpose
+			registers from the frame
 		*/
         frame->rax = current_thread->context.rax;
         frame->rbx = current_thread->context.rbx;
@@ -191,27 +240,32 @@ void scheduler_tick(interrupt_frame_t* frame/*the irq will pass this*/) {
         frame->rsi = current_thread->context.rsi;
         frame->rdi = current_thread->context.rdi;
         frame->rbp = current_thread->context.rbp;
-        frame->r8 = current_thread->context.r8;
-        frame->r9 = current_thread->context.r9;
+        frame->r8  = current_thread->context.r8;
+        frame->r9  = current_thread->context.r9;
         frame->r10 = current_thread->context.r10;
         frame->r11 = current_thread->context.r11;
         frame->r12 = current_thread->context.r12;
         frame->r13 = current_thread->context.r13;
         frame->r14 = current_thread->context.r14;
         frame->r15 = current_thread->context.r15;
-        /*
-			The main of the frame
+		/*
+			Main of the Frame
 		*/
-        frame->rip = current_thread->context.rip;
-        frame->cs = USER_CODE_SELECTOR;
-        frame->rflags = current_thread->context.rflags | 0x200;
-        frame->rsp = current_thread->context.rsp;
-        frame->ss = USER_DATA_SELECTOR;
+        frame->rip    = current_thread->context.rip;
+        frame->cs     = USER_CODE_SELECTOR/*1B*/;
+        frame->rflags = current_thread->context.rflags | /*Enable interrupts*/0x200;
+        frame->rsp    = current_thread->context.rsp;
+        frame->ss     = USER_DATA_SELECTOR/*23*/;
     } else {
 		/*
+
 			RING0
-			i was suprised too how less ring 0 takes
- 		*/
+
+		*/
+		/*
+			Restore the 
+			registers of the ring0
+		*/
         *frame = current_thread->context;
     }
 }

@@ -41,7 +41,7 @@ int64_t thread_execute_handler(uint64_t tid_arg, uint64_t unused2, uint64_t unus
 int64_t thread_exit_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 int64_t thread_terminate_handler(uint64_t tid_arg, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 int64_t thread_block_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
-int64_t thread_unblock_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
+int64_t thread_unblock_handler(uint64_t tid, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6);
 /*
 	Process
 */

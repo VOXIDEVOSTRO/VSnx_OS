@@ -29,7 +29,7 @@ SECTIONS
         *(COMMON)
     }
 
-    /* Discard unnecessary sections */
+    /* Discard unnecessary sections like comments? */
     /DISCARD/ : {
         *(.note.*)
         *(.comment)

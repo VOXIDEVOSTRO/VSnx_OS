@@ -63,7 +63,7 @@ typedef struct {
 /*
     prototypes
 */
-void pci_init(void);
+void pci_driver_init(void);
 uint32_t pci_config_read(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
 void pci_config_write(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value);
 uint16_t pci_config_read16(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);

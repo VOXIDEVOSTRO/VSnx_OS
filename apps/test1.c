@@ -34,7 +34,7 @@ void _start(void) {
 		Idle up
 	*/
     while (1) {
-		print("RUNNING TTTTTTT");
+		print("RUNNING TTTTTTT YOU MOTH!!!!\n");
         __asm__ volatile("nop");
     }
 }

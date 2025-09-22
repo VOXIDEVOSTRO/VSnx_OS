@@ -120,7 +120,7 @@ pci_device_t* pci_find_class(uint8_t class_code, uint8_t subclass) {
 /*
     Initialize PCI
 */
-void pci_init(void) {
+void pci_driver_init(void) {
     #ifdef DEBUG
     printf("PCI: Initializing PCI subsystem\n");
     #endif

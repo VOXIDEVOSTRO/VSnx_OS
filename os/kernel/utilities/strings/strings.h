@@ -6,6 +6,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#ifndef STR
+#define STR
 /*
     String length and copying functions
 */
@@ -54,7 +56,7 @@ char* strtok(char* str, const char* delim);
 */
 int atoi(const char* str);
 long atol(const char* str);
-
+#endif
 /*
     Additional constants
 */

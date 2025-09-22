@@ -3,7 +3,7 @@
 */
 #include "interrupts.h"
 #include "../../threading/thread.h"
-#include "../io/ps2/ps2.h"
+#include "../../driver/hookregistry/hid/keybrd.h"
 #include "../../systemclock/clock.h"
 /*
     IRQ Handler - Hardware interrupt handling
@@ -40,7 +40,7 @@ void irq_handler(interrupt_frame_t* frame) {
 			system_clock_tick(/*UPDATE the clock*/);
             break;
         case 1:
-            ps2_keyboard_interrupt_handler(frame);
+			kbd_interrupt_handler(frame->int_no);
             break;
         default:
             break;

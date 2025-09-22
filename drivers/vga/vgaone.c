@@ -6,6 +6,14 @@
 #include "../../os/kernel/syscalls/func.h" // for some user calls
 #include <stdint.h>
 /*
+	UNCOMMENT for extra ouput!
+*/
+
+
+//#define DEBUG		/*UNCOMMENT!*/
+
+
+/*
 	prototypes
 */
 int vga12h_driver_init(void);
@@ -176,7 +184,9 @@ static void vga_write_ac(uint8_t index, uint8_t value) {
 	SET dac for the 12h too
 */
 static void vga_set_dac_palette_12h(void) {
+    #ifdef DEBUG
     print("[VGA12H] Setting DAC palette for mode 12h...");
+    #endif
     outb(0x3C8, 0/*index*/);
 
     const uint8_t palette[16][3] = {
@@ -208,7 +218,9 @@ static void vga_set_dac_palette_12h(void) {
         outb(0x3C9, palette[i][2]);
 		/*RGB?*/
     }
+    #ifdef DEBUG
     print("[VGA12H] DAC palette set");
+    #endif
 }
 /*
 	Set the plane duh...
@@ -229,7 +241,9 @@ static void vga_select_plane(uint8_t plane) {
 	THE heart of the init
 */
 static void vga_set_mode_12h(void) {
+    #ifdef DEBUG
     print("[VGA12H] Setting mode 12h");
+    #endif
 	/*
 		Disable INTERRUPTS or ELSE....
 	*/
@@ -237,39 +251,51 @@ static void vga_set_mode_12h(void) {
 	/*
 		Hold up... wait a minute
 	*/
+    #ifdef DEBUG
     print("[VGA12H] Waiting for vertical retrace...");
+    #endif
     while ((inb(VGA_IS1_RC) & 0x08));
     while (!(inb(VGA_IS1_RC) & 0x08));
 	/*
 		Unlock the CRTC. Normal VGA candy
 	*/
+    #ifdef DEBUG
     print("[VGA12H] Unlocking CRTC registers...");
+    #endif
     outb(VGA_CRTC_INDEX, 0x11);
     uint8_t crtc11 = inb(VGA_CRTC_DATA);
     outb(VGA_CRTC_DATA, crtc11 & 0x7F);
 	/*
 		Also for misc
 	*/
+    #ifdef DEBUG
     print("[VGA12H] Setting misc register...");
+    #endif
     outb(VGA_MISC_WRITE, 0xE3);
 	/*
 		da sequencer
 	*/
+    #ifdef DEBUG
     print("[VGA12H] Setting sequencer registers...");
+    #endif
     for (int i = 0; i < 5; i++) {
         vga_write_seq(i, vga_mode12h_seq[i]);
     }
 	/*
 		Set CRTC
 	*/
+    #ifdef DEBUG
     print("[VGA12H] Setting CRTC registers...");
+    #endif
     for (int i = 0; i < 25; i++) {
         vga_write_crt(i, vga_mode12h_crt[i]);
     }
 	/*
 		And the main thing. the graphic controller registers
 	*/
+    #ifdef DEBUG
     print("[VGA12H] Setting graphics controller registers...");
+    #endif
     for (int i = 0; i < 9; i++) {
         vga_write_gc(i, vga_mode12h_gc[i]);
     }
@@ -277,14 +303,18 @@ static void vga_set_mode_12h(void) {
 		Set the attr registers too
 		Man thats lots of register stuff
 	*/
+    #ifdef DEBUG
     print("[VGA12H] Setting attribute controller registers...");
+    #endif
     for (int i = 0; i < 21; i++){
         vga_write_ac(i, vga_mode12h_ac[i]);
     }
 	/*
 		FINALLY enable Video. because we need to see something on screen
 	*/
+    #ifdef DEBUG
     print("[VGA12H] Enabling video output...because bro how the heck would you see graphics at all");
+    #endif
     inb(VGA_IS1_RC);
     outb(VGA_AC_INDEX, 0x20);
 	/*
@@ -302,7 +332,9 @@ static void vga_set_mode_12h(void) {
 		Set the planes to 0
 		or just clear the screen
 	*/
+    #ifdef DEBUG
     print("[VGA12H] Clearing screen...");
+    #endif
     for (int plane = 0; plane < VGA_MODE12H_PLANES; plane++) {
         vga_select_plane(plane);
         for (int i = 0; i < VGA_MEMORY_SIZE; i++) {
@@ -320,7 +352,9 @@ static void vga_set_mode_12h(void) {
     vga12h_state.height = VGA_MODE12H_HEIGHT;
     vga12h_state.bpp = VGA_MODE12H_BPP;
 
+    #ifdef DEBUG
     print("[VGA12H] Mode 12h set and ready to do some shi");
+    #endif
 }
 /*
 
@@ -483,30 +517,28 @@ void vga12h_driver_cleanup(void) {
 
 */
 void _start(void) {
+    #ifdef DEBUG
     print("[VGA12H] Starting VGA Mode 12h driver...");
+    #endif
     if (vga12h_driver_init()/*MAin init is here*/ == 0) {
+        #ifdef DEBUG
         print("[VGA12H] Driver initialized successfully");
+        #endif
 		/*
 			Clean up artifacts
 		*/
         vga12h_clear_screen(0);
+        #ifdef DEBUG
         print("[VGA12H] VGA Mode 12h driver is done");
-        while (1) {
-			/*
-				Loop of success
-			*/
-            __asm__ volatile("nop");
-        }
+        #endif
+		t_block();
     } else {
 		/*
 			Failure
 		*/
+        #ifdef DEBUG
         print("[VGA12H] Driver initialization failed BECAUSE YOU FAILURE");
-    }
-    while (1) {
-		/*
-			Loop of a failure
-		*/
-        __asm__ volatile("nop");
+        #endif
+		t_block();
     }
 }

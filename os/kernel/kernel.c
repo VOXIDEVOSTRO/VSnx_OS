@@ -33,10 +33,6 @@
 */
 #include "hal/io/disk/disk.h"
 /*
-	And the Keyboard (ps2)
-*/
-#include "hal/io/ps2/ps2.h"
-/*
 	Some hook stuff
 */
 #include "driver/hookcall/hookcall.h"
@@ -63,17 +59,163 @@
 */
 #include "syscalls/syscall.h"
 /*
-	Some drivers
-*/
-#include "hal/vga/vga_gfx/vga_gfx.h"
-/*
 	Some GFX driver functions
 */
 #include "driver/hookregistry/graphics/gfx.h"
 /*
+	Keyboard driver functions
+*/
+#include "driver/hookregistry/hid/keybrd.h"
+/*
 	Startup configuration parsing
 */
 #include "startup/startup.h"
+#include "hal/io/ps2/ps2dect.h"
+/*
+	Clock!
+*/
+#include "hal/interrupts/clock/pit.h"
+/*
+	hookorder. Our driver init start!
+*/
+#include "driver/hookorder/hookorder.h"
+/*
+	Some uncommentable stuff
+*/
+//#define TEST		/*UNCOMMENT*/
+//#define VGA		/*UNCOMMENT*/
+/*
+
+	Simple test
+
+*/
+#ifdef TEST
+/*
+	Small crude delay for test
+*/
+static void delay(volatile int count) {
+    for (volatile int i=0; i<count*100000; i++) { __asm__ __volatile__("nop");/*crude*/}
+}
+
+void dvd_screensaver(void) {
+    int x = 100, y = 100;
+    int dx = 3, dy = 2;
+    int w = 1024, h = 768; /*screen*/
+    int logo_w = 100, logo_h = 100; /*Logo bound box*/
+
+    uint32_t colors[] = {4};
+    int color_index = 0;
+	/*
+		Simple animation...
+	*/
+    for (;;) {
+        gfx_clear(0x000000);
+		/*
+			make the ball
+		*/
+        gfx_fill_rect(x, y, logo_w, logo_h, colors);
+		/*
+			Update
+		*/
+        x += dx; y += dy;
+		/*
+			Bounce
+		*/
+        if (x <= 0 || x + logo_w >= w) { dx = -dx; color_index = (color_index); }
+        if (y <= 0 || y + logo_h >= h) { dy = -dy; color_index = (color_index); }
+
+        delay(100);
+    }
+}
+
+void worker_thread(void* arg) {
+    while (1) {
+		/*
+			Some stuff
+		*/
+        uint32_t has_key = 0;
+        uint32_t keycode = 0;
+        uint32_t unicode = 0;
+        uint32_t mods = 0;
+		/*
+			Simple getchar loop
+		*/
+        kbd_has_key(&has_key);
+        if (has_key) {
+			/*
+				handle the key
+			*/
+            kbd_get_key(&keycode);
+            kbd_translate(keycode, &unicode);
+            kbd_get_modifiers(&mods);
+			/*
+				Printup if a valid ASCII
+			*/
+            if (unicode >= 32 && unicode <= 126) {
+                printf("%c", (char)unicode);
+            } else if (unicode == 13) {
+                printf("\n");
+            }
+        }
+    }
+}
+#endif
+/*
+
+	Post init for other stuff
+	because we would have the hookorder here and when
+	even one thread is active, the kernel will lock itself
+	to the interrupt handler meaning nothing after the first thread.
+	so making kernel worker thread
+
+*/
+void post_init_thread(void* arg) {
+    ps2_devices_init();
+	#ifdef TEST
+	thread_t* worker = thread_create(worker_thread/*me stupid*/, NULL, THREAD_RING0, THREAD_PRIORITY_IMMEDIATES/*no need*/, 0);
+	if (worker) {
+		if (thread_execute(worker) == 0) {
+			#ifdef DEBUG
+			printf("VSnx: test thread started\n");
+			#endif
+		} else {
+			#ifdef DEBUG
+			printf("VSnx: failed\n");
+			#endif
+		}
+	} else {
+		#ifdef DEBUG
+		printf("VSnx: Failed to create the work thread\n");
+		#endif
+	}
+	#endif
+	/*
+		START THE DRIVERS !
+		Main init for the drivers
+		via the hook order
+	*/
+	start_hookorder();
+
+    // Call startup config parser to spawn processes
+    #ifdef DEBUG
+    printf("KERNEL: Parsing startup process list...\n");
+    #endif
+	/*
+		LOAD the start up apps
+		simple config parsing
+	*/
+    parse_startup_list();
+	/*
+		VBOX svga test
+	*/
+	#ifdef TEST
+	dvd_screensaver(/*satisfying*/);
+	#endif
+	/*
+		Done with init	
+	*/
+	thread_exit();
+}
 /*
 	MAIN KERNEL ENTRY POINT
 	The starting point of the kernel
@@ -113,6 +255,11 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		#endif
 	}
 	printf("VSnx booted...Starting init\n");
+	/*
+		making sure we have PIT at 1000hz meaning 1ms
+		because of clock
+	*/
+	set_freq(1000);
 	/*
 		time for the memory map. and important for AMD64 system or x86_64.
 		As we need to use as much memory we can. And to get the picture.
@@ -154,176 +301,6 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 		init the IDT
 	*/
 	idt_init();
-	/*
-		NOW init the keyboard or PS2
-	*/
-	/*
-		PS/2
-	*/
-	#ifdef DEBUG
-	printf("VSnx: Detecting PS/2 devices...\n");
-	#endif
-	/*
-		INIT some vars
-	*/
-	ps2_controller.dual_channel = false;
-	ps2_controller.port1_exists = false;
-	ps2_controller.port2_exists = false;
-	ps2_controller.port1_device = PS2_DEVICE_NONE;
-	ps2_controller.port2_device = PS2_DEVICE_NONE;
-	ps2_controller.initialized = false;
-	/*
-		FIRST disable
-	*/
-	ps2_write_command(PS2_CMD_DISABLE_PORT1);
-	ps2_write_command(PS2_CMD_DISABLE_PORT2);
-
-	/*
-		FLUSH (not the toilet)
-	*/
-	while (inb(PS2_STATUS_PORT) & PS2_STATUS_OUTPUT_FULL) {
-	    inb(PS2_DATA_PORT);
-	}
-
-	/*
-		Set the configuration
-	*/
-	ps2_write_command(PS2_CMD_READ_CONFIG);
-	uint8_t config = ps2_read_data();
-	ps2_controller.config_byte = config;
-	#ifdef DEBUG
-	printf("VSnx: PS/2 original config: 0x%02X\n", config);
-	#endif
-	/*
-		Check if dual
-	*/
-	ps2_controller.dual_channel = (config & PS2_CONFIG_PORT2_CLOCK) != 0;
-
-	config &= ~(PS2_CONFIG_PORT1_INT | PS2_CONFIG_PORT2_INT | PS2_CONFIG_PORT1_TRANS);
-	ps2_write_command(PS2_CMD_WRITE_CONFIG);
-	ps2_write_data(config);
-	/*
-		do a self test
-	*/
-	ps2_write_command(PS2_CMD_TEST_CONTROLLER);
-	uint8_t test_result = ps2_read_data();
-
-	if (test_result != 0x55) {
-		#ifdef DEBUG
-	    printf("VSnx: PS/2 controller self-test failed: 0x%02X\n", test_result);
-		#endif
-	} else {
-		#ifdef DEBUG
-	    printf("VSnx: PS/2 controller self-test passed\n");
-		#endif
-		/*
-			test ports
-		*/
-	    ps2_write_command(PS2_CMD_TEST_PORT1);
-	    test_result = ps2_read_data();
-	    ps2_controller.port1_exists = (test_result == 0x00);
-		#ifdef DEBUG
-	    printf("VSnx: PS/2 Port 1 test: 0x%02X (%s)\n", test_result, 
-	           ps2_controller.port1_exists ? "OK" : "FAIL");
-		#endif
-		/*
-			IF dual channel. Enable
-		*/
-	    if (ps2_controller.dual_channel) {
-	        ps2_write_command(PS2_CMD_TEST_PORT2);
-	        test_result = ps2_read_data();
-	        ps2_controller.port2_exists = (test_result == 0x00);
-			#ifdef DEBUG
-	        printf("VSnx: PS/2 Port 2 test: 0x%02X (%s)\n", test_result,
-	               ps2_controller.port2_exists ? "OK" : "FAIL");
-			#endif
-		}
-		/*
-			IDENTIFY
-		*/
-	    if (ps2_controller.port1_exists) {
-	        ps2_write_command(PS2_CMD_ENABLE_PORT1);
-			/*
-				Check the device on 1
-			*/
-	        ps2_controller.port1_device = ps2_identify_device(1);
-		
-	        if (ps2_controller.port1_device == PS2_DEVICE_KEYBOARD_OLD ||
-	            ps2_controller.port1_device == PS2_DEVICE_KEYBOARD_MF2) {
-				#ifdef DEBUG
-	            printf("VSnx: Keyboard detected on port 1, initializing...\n");
-				#endif
-	            /*
-					FINALLY init the keyboard
-				*/
-	            ps2_keyboard_init(1);
-				#ifdef DEBUG
-	            printf("VSnx: Keyboard ready for input\n");
-				#endif
-	        } else {
-				#ifdef DEBUG
-	            printf("VSnx: No keyboard on port 1 (device type: %d)\n", ps2_controller.port1_device);
-				#endif
-	        }
-	    }
-		/*
-			ALSO check the 2
-		*/
-	    if (ps2_controller.port2_exists) {
-	        ps2_write_command(PS2_CMD_ENABLE_PORT2);
-			/*
-				IDENTITFY
-			*/
-	        ps2_controller.port2_device = ps2_identify_device(2);
-			/*
-				To be FIXED or added:
-				Add mouse init here
-			*/
-	        if (ps2_controller.port2_device >= PS2_DEVICE_MOUSE_STANDARD) {
-				#ifdef DEBUG
-	            printf("VSnx: Mouse detected on port 2\n");
-				#endif
-	        } else {
-				#ifdef DEBUG
-	            printf("VSnx: No mouse on port 2 (device type: %d)\n", ps2_controller.port2_device);
-				#endif
-	        }
-	    }
-		/*
-			Enable hardware interrupts for them
-		*/
-	    ps2_write_command(PS2_CMD_READ_CONFIG);
-	    config = ps2_read_data();
-	
-	    if (ps2_controller.port1_exists && 
-	        (ps2_controller.port1_device == PS2_DEVICE_KEYBOARD_OLD ||
-	         ps2_controller.port1_device == PS2_DEVICE_KEYBOARD_MF2)) {
-	        config |= PS2_CONFIG_PORT1_INT;
-			#ifdef DEBUG
-	        printf("VSnx: Enabled keyboard interrupts (IRQ1)\n");
-			#endif
-	    }
-	
-	    if (ps2_controller.port2_exists && 
-	        ps2_controller.port2_device >= PS2_DEVICE_MOUSE_STANDARD) {
-	        config |= PS2_CONFIG_PORT2_INT;
-			#ifdef DEBUG
-	        printf("VSnx: Enabled mouse interrupts (IRQ12)\n");
-			#endif
-	    }
-		/*
-			we are done
-		*/
-	    ps2_write_command(PS2_CMD_WRITE_CONFIG);
-	    ps2_write_data(config);
-	
-	    ps2_controller.initialized = true;
-		#ifdef DEBUG
-	    printf("VSnx: PS/2 initialization complete\n");
-	    printf("VSnx: Port 1 device: %d, Port 2 device: %d\n", 
-	           ps2_controller.port1_device, ps2_controller.port2_device);
-		#endif
-	}
 	#ifdef DEBUG
 	printf("VSnx: Initializing Physical Memory Manager...\n");
 	#endif
@@ -363,8 +340,7 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 	#ifdef DEBUG
 	printf("VSnx: Initializing PCI...\n");
 	#endif
-	pci_init();
-	pci_print_devices();	
+	pci_driver_init();
 	/*
 		Some I/O candy.
 		detect the disk. becuase we need to know it so we don't write to a phantom
@@ -472,55 +448,55 @@ void kernel_main(uint64_t multiboot_info_addr/*Passing the mb2 Addr. because we 
 	#endif
 	threading_init();
 	/*
-		just after it... THE SYSCALLS. standard of communication between kernel and thread/process for some
-		previlaged acsess (probably spelled it wrong)
+		user space syscalls
 	*/
 	init_syscalls();
+	/*
+		And our driver interface
+	*/
 	init_hookcalls();
 	/*
-		THEN first try to check for a VGA graphics
-		Both modes are supported: 13h and 12h
+		Start of the post init, and handled by a kernel worker thread.
 	*/
-
-
-
-	/*
-	
-		UN COMMENT if we want to test VGA.
-		For vga driver
-	
-	*/
-
-	//#define VGA /*UNCOMMENT IF NEED VGA!*/
-
-	#ifdef VGA
-	vga_load_graphics_driver(/*Load some drivers, In this case its VGA*/);
-	#endif
 	#ifdef DEBUG
-	printf("VSnx: Done\n");
+	printf("VSnx: Creating post init worker thread...\n");
 	#endif
-    // Call startup config parser to spawn processes
-    #ifdef DEBUG
-    printf("KERNEL: Parsing startup process list...\n");
-    #endif
 	/*
-		LOAD the start up apps
-		simple config parsing
+		The reason to use thread here is because if even one thread becomes active the kernel hits the dead end,
+		because the schedular isn't gonna round robin the kernel it self, as its not a valid PID and TID,
+		hence, we will make kernel worker thread which will sceduled and properly handle the drivers,
+		load them and execute, them all of them. I am just stupid to troubleshoot a problem which would 
+		have been solved by existing systems... wasted like 4 hours...
 	*/
-    parse_startup_list();
+	thread_t* driver_worker = thread_create(post_init_thread, NULL, THREAD_RING0, THREAD_PRIORITY_IMMEDIATES/*finish as soon as possible*/, 0);
+	if (driver_worker) {
+		/*
+			EXECUTE the thread
+		*/
+		if (thread_execute(driver_worker) == 0) {
+			#ifdef DEBUG
+			printf("VSnx: Post init started\n");
+			#endif
+		} else {
+			#ifdef DEBUG
+			printf("VSnx: Post init worker failed\n");
+			#endif
+		}
+	} else {
+		#ifdef DEBUG
+		printf("VSnx: Failed to create the post thread\n");
+		#endif
+	}
+	#ifdef DEBUG
+	/*
+		Prolly won't see this message
+	*/
+	printf("VSnx: Done with init\n");
+	#endif
     while (1) { /*main idle*/
 		/*
 			Void of a loop
 		*/
-		/*
-			ALSo here is demostration of the drivers and thier interfaces
-		*/
-		#ifdef VGA
-		gfx_fill_rect(20,  20,  80, 60, 4);   
-        gfx_fill_rect(120, 20,  80, 60, 2);
-        gfx_fill_rect(220, 20,  80, 60, 1); 
-        gfx_fill_rect(100, 100, 120, 80, 15);
-		#endif
-        __asm__ volatile("hlt"); // wait for interrupt
+        __asm__ volatile("hlt"/*wait up for int*/);
     }
 }

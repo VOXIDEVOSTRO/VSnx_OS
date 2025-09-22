@@ -16,10 +16,7 @@
 int64_t printf_handler(uint64_t format_ptr, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5) {
 
     char* format = (char*)format_ptr;
-    
-    printf(/*So we print PID too. because we can keep track for debug*/"USER[PID=%d]: %s\n", 
-           current_thread ? current_thread->owner_pid/*use PID instead of TID to keep them contained*/ : 0, 
-           format);
+    printf(format);
     
     return 0; // Success
 }
@@ -205,7 +202,7 @@ int64_t thread_execute_handler(uint64_t tid_arg, uint64_t unused2, uint64_t unus
     return (int64_t)rc;
 }
 
-int64_t thread_exit_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6)
+__attribute__((noreturn)) int64_t thread_exit_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6)
 {
     (void)unused1; (void)unused2; (void)unused3; (void)unused4; (void)unused5; (void)unused6;
 	/*
@@ -223,15 +220,15 @@ int64_t thread_terminate_handler(uint64_t tid_arg, uint64_t unused2, uint64_t un
     return (int64_t)rc;
 }
 
-int64_t thread_block_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6) {
-    return thread_block();
+__attribute__((noreturn)) int64_t thread_block_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6) {
+    thread_block();
 }
 
-int64_t thread_unblock_handler(uint64_t unused1, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6) {
+int64_t thread_unblock_handler(uint64_t tid, uint64_t unused2, uint64_t unused3, uint64_t unused4, uint64_t unused5, uint64_t unused6) {
     /*
 		I GUESS WE DONT need this
 	*/
-	return thread_unblock();
+	return thread_unblock((uint32_t)tid);
 }
 
 /*

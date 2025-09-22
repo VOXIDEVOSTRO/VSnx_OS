@@ -46,7 +46,7 @@ static inline int  t_terminate(uint32_t tid);
 static inline void cpu_relax(void);
 static inline void t_sleep(uint32_t milliseconds);
 static inline int  t_block(void);
-static inline int  t_unblock(void);
+static inline int  t_unblock(uint32_t tid);
 
 /* ---- Process/proc management ---- */
 static inline int spawn_proc(const char* filename, int privilege);
@@ -168,7 +168,7 @@ static inline int t_execute(uint32_t tid) {
 	return syscall(19, (uint64_t)tid, 0, 0, 0, 0, 0); 
 }
 
-static inline void t_exit(void) { 
+__attribute__((noreturn)) static inline void t_exit(void) { 
 	syscall(20, 0, 0, 0, 0, 0, 0); 
 }
 
@@ -203,13 +203,12 @@ static inline void t_sleep(uint32_t milliseconds) {
     }
 }
 
-
-static inline int t_block(void) {
-    return syscall(28, 0, 0, 0, 0, 0, 0);
+__attribute__((noreturn)) static inline int t_block(void) {
+    syscall(28, 0, 0, 0, 0, 0, 0);
 }
 
-static inline int t_unblock(void) {
-    return syscall(29, 0, 0, 0, 0, 0, 0);
+static inline int t_unblock(uint32_t tid) {
+    return syscall(29, tid, 0, 0, 0, 0, 0);
 }
 
 /*

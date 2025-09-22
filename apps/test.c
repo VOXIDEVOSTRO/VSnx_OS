@@ -36,7 +36,7 @@ void _start(void) {
 		Loop of IDLENESS
 	*/
     while (1) {
-		print("RUNNING T");
+		print("RUNNING T BUT HIS THE FIRST\n");
         __asm__ volatile("nop");
     }
 }

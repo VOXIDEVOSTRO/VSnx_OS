@@ -10,7 +10,7 @@
 /*
 	The function ptr struct
 */
-typedef void (*hook_func_t)(void* data);
+typedef int64_t (*hook_func_t)(void* data);
 /*
 	Main hook entries
 */
@@ -33,7 +33,7 @@ extern hook_entry_t* hook_list;
 	prototypes
 */
 void register_hook(const char* name, hook_func_t func);
-void call_hook(const char* name, void* data);
+int64_t call_hook(const char* name, void* data);
 hook_func_t get_hook(const char* name);
 /*
 	Some useful macros

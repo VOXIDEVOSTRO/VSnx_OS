@@ -24,7 +24,10 @@ void register_hook(const char* name, hook_func_t func) {
 	/*
 		Alloc the entry some memory
 	*/
-    hook_entry_t* entry = (hook_entry_t*)kmalloc(sizeof(hook_entry_t));
+    hook_entry_t* entry = (hook_entry_t*)/*PMM*/kmalloc(sizeof(hook_entry_t));
+	/*
+		validate
+	*/
     if (!entry) return;
     strncpy(entry->name, name, 63);
 	/*
@@ -38,7 +41,7 @@ void register_hook(const char* name, hook_func_t func) {
 /*
 	The main caller has a very simple job
 */
-void call_hook(const char* name, void* data) {
+int64_t call_hook(const char* name, void* data) {
     hook_entry_t* current = hook_list;
     while (current) {
 		/*
@@ -46,17 +49,25 @@ void call_hook(const char* name, void* data) {
 			and call it. Much better then before
 		*/
         if (strcmp(current->name, name) == 0) {
-            current->func(data);
-            return;
+            return current->func(data);
         }
         current = current->next;
     }
+	/*
+		Nothing
+	*/
+    return -1;
 }
 /*
 	Just get the pointer
 */
 hook_func_t get_hook(const char* name) {
     hook_entry_t* current = hook_list;
+	/*
+		Simple getting for hook
+		we return the pointer
+		and great for direct acsess
+	*/
     while (current) {
         if (strcmp(current->name, name) == 0) {
             return current->func;
